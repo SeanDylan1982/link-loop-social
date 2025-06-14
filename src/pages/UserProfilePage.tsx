@@ -14,7 +14,7 @@ const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { user, loading: authLoading } = useSupabaseAuth();
   const { profile, posts, loading: profileLoading, error } = useUserProfile(userId);
-  const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading } = useFriendshipStatus(userId);
+  const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading, refetchStatus } = useFriendshipStatus(userId);
   const navigate = useNavigate();
 
   const handleNavChange = (tab: string) => {
@@ -23,21 +23,40 @@ const UserProfilePage: React.FC = () => {
 
   const loading = authLoading || profileLoading;
 
-  const renderFriendButton = () => {
+  const renderFriendOrMessageButton = () => {
     if (friendshipLoading || !user || user.id === userId) return null;
-
-    switch (friendshipStatus) {
-      case 'friends':
-        return <Button asChild><Link to={`/conversation/${userId}`}><MessageCircle className="mr-2 h-4 w-4" /> Send Message</Link></Button>;
-      case 'request_sent':
-        return <Button variant="outline" disabled><Clock className="mr-2 h-4 w-4" /> Request Sent</Button>;
-      case 'request_received':
-        return <Button asChild><Link to="/?tab=friends">Respond to Request</Link></Button>;
-      case 'not_friends':
-        return <Button onClick={() => sendFriendRequest()}><UserPlus className="mr-2 h-4 w-4" /> Add Friend</Button>;
-      default:
-        return null;
+    // Only friends: show message. Not friends: show add friend. Others: status.
+    if (friendshipStatus === 'friends') {
+      return (
+        <Button asChild>
+          <Link to={`/conversation/${userId}`}>
+            <MessageCircle className="mr-2 h-4 w-4" /> Send Message
+          </Link>
+        </Button>
+      );
     }
+    if (friendshipStatus === 'not_friends') {
+      return (
+        <Button onClick={() => sendFriendRequest()}>
+          <UserPlus className="mr-2 h-4 w-4" /> Add Friend
+        </Button>
+      );
+    }
+    if (friendshipStatus === 'request_sent') {
+      return (
+        <Button variant="outline" disabled>
+          <Clock className="mr-2 h-4 w-4" /> Request Sent
+        </Button>
+      );
+    }
+    if (friendshipStatus === 'request_received') {
+      return (
+        <Button asChild>
+          <Link to="/?tab=friends">Respond to Request</Link>
+        </Button>
+      );
+    }
+    return null;
   };
 
   return (
@@ -66,7 +85,7 @@ const UserProfilePage: React.FC = () => {
                         Joined {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : ""}
                     </p>
                   </div>
-                  {renderFriendButton()}
+                  {renderFriendOrMessageButton()}
                 </div>
                  <div>
                     <h3 className="font-medium text-gray-700">Bio</h3>
@@ -110,4 +129,3 @@ const UserProfilePage: React.FC = () => {
 };
 
 export default UserProfilePage;
-

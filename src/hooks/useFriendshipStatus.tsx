@@ -72,5 +72,15 @@ export const useFriendshipStatus = (profileId: string | undefined) => {
     }
   });
 
-  return { status: status ?? 'not_friends', loading: isLoading || sendFriendRequestMutation.isPending, sendFriendRequest: sendFriendRequestMutation.mutate };
+  // Add a refetch method so components can force-update the status
+  const refetchStatus = () => {
+      queryClient.invalidateQueries({ queryKey: ['friendshipStatus', user?.id, profileId] });
+  };
+
+  return {
+    status: status ?? 'not_friends',
+    loading: isLoading || sendFriendRequestMutation.isPending,
+    sendFriendRequest: sendFriendRequestMutation.mutate,
+    refetchStatus
+  };
 };
