@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Home, Users, MessageSquare, User } from 'lucide-react';
 
 interface NavbarProps {
@@ -11,7 +11,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
-  const { user, logout } = useAuth();
+  const { profile, logout } = useSupabaseAuth();
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
@@ -19,6 +19,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'profile', label: 'Profile', icon: User },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <nav className="bg-white shadow-lg border-b sticky top-0 z-50">
@@ -44,12 +52,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.avatar} />
-                <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={profile?.avatar} />
+                <AvatarFallback>{profile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="hidden sm:block text-sm font-medium">{user?.username}</span>
+              <span className="hidden sm:block text-sm font-medium">{profile?.username}</span>
             </div>
-            <Button variant="outline" onClick={logout}>
+            <Button variant="outline" onClick={handleLogout}>
               Logout
             </Button>
           </div>
