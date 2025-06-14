@@ -3,7 +3,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { Home, Users, MessageSquare, User } from 'lucide-react';
+import { Home, Users, MessageSquare, User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 interface NavbarProps {
   activeTab: string;
@@ -12,6 +14,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
   const { profile, logout } = useSupabaseAuth();
+  const navigate = useNavigate();
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
@@ -23,8 +26,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
   const handleLogout = async () => {
     try {
       await logout();
+      toast({ title: "Logged out", description: "You have been logged out successfully." });
+      navigate('/');
     } catch (error) {
       console.error('Error logging out:', error);
+      toast({ title: "Logout Failed", description: "Something went wrong.", variant: "destructive" });
     }
   };
 
@@ -58,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
               <span className="hidden sm:block text-sm font-medium">{profile?.username}</span>
             </div>
             <Button variant="outline" onClick={handleLogout}>
-              Logout
+              <LogOut size={16} className="mr-1" /> Logout
             </Button>
           </div>
         </div>
