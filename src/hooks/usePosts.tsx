@@ -12,10 +12,6 @@ interface Post {
   likes: string[];
   shares: number;
   created_at: string;
-  profiles?: {
-    username: string;
-    avatar?: string;
-  };
 }
 
 export const usePosts = () => {
@@ -27,20 +23,13 @@ export const usePosts = () => {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select(`
-          *,
-          profiles!posts_user_id_fkey (
-            username,
-            avatar
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching posts:', error);
         return;
       }
-
       setPosts(data || []);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -63,13 +52,7 @@ export const usePosts = () => {
           content,
           image
         }])
-        .select(`
-          *,
-          profiles!posts_user_id_fkey (
-            username,
-            avatar
-          )
-        `)
+        .select('*')
         .single();
 
       if (error) {

@@ -64,6 +64,7 @@ export const UserProfile: React.FC = () => {
             </Avatar>
             <div className="flex-1">
               <h2 className="text-2xl font-bold">{profile?.username}</h2>
+              {/* Email is present on profile */}
               <p className="text-gray-600">{profile?.email}</p>
               <p className="text-sm text-gray-500">
                 Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
@@ -126,7 +127,6 @@ export const UserProfile: React.FC = () => {
                   <p className="mb-2">{post.content}</p>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <span>{post.likes?.length || 0} likes</span>
-                    {/* Comments are not handled in this file, so omitting */}
                     <span>{post.shares || 0} shares</span>
                     <span>{post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}</span>
                   </div>
