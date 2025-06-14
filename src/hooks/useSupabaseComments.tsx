@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -11,10 +10,6 @@ export interface SupabaseComment {
   content: string;
   likes: string[];
   created_at: string;
-  profiles?: {
-    username: string;
-    avatar?: string;
-  };
 }
 
 export const useSupabaseComments = (postId: string) => {
@@ -26,7 +21,7 @@ export const useSupabaseComments = (postId: string) => {
     setLoading(true);
     const { data, error } = await supabase
       .from("comments")
-      .select("*, profiles:profiles(id,username,avatar)")
+      .select("*")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
 
@@ -47,7 +42,7 @@ export const useSupabaseComments = (postId: string) => {
     const { data, error } = await supabase
       .from("comments")
       .insert([{ user_id: user.id, post_id: postId, content: text }])
-      .select("*, profiles:profiles(id,username,avatar)")
+      .select("*")
       .single();
     if (error) {
       toast({ title: "Error", description: "Failed to add comment", variant: "destructive" });
