@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,9 +14,19 @@ export const UserProfile: React.FC = () => {
   const { user, profile, updateProfile, loading } = useSupabaseAuth();
   const { posts } = usePosts();
   const [editing, setEditing] = useState(false);
-  const [username, setUsername] = useState(profile?.username || '');
-  const [bio, setBio] = useState(profile?.bio || '');
+  const [username, setUsername] = useState('');
+  const [bio, setBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setUsername(profile.username || '');
+      setBio(profile.bio || '');
+      setAvatarPreview(profile.avatar || null);
+    }
+  }, [profile]);
 
   if (loading || !profile) {
     return (
@@ -32,8 +42,9 @@ export const UserProfile: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateProfile({ username, bio });
+      await updateProfile({ username, bio }, avatarFile);
       setEditing(false);
+      setAvatarFile(null);
       toast({ title: "Profile updated successfully!" });
     } catch (error) {
       toast({ 
@@ -57,14 +68,13 @@ export const UserProfile: React.FC = () => {
         <CardContent>
           <div className="flex items-center space-x-6 mb-6">
             <Avatar className="w-24 h-24">
-              <AvatarImage src={profile?.avatar || undefined} />
+              <AvatarImage src={avatarPreview || undefined} />
               <AvatarFallback className="text-2xl">
                 {profile?.username?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <h2 className="text-2xl font-bold">{profile?.username}</h2>
-              {/* Email is present on profile */}
               <p className="text-gray-600">{profile?.email}</p>
               <p className="text-sm text-gray-500">
                 Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
@@ -74,6 +84,22 @@ export const UserProfile: React.FC = () => {
 
           {editing ? (
             <div className="space-y-4">
+               <div className="space-y-2">
+                <Label htmlFor="avatar">Profile Picture</Label>
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setAvatarFile(file);
+                      setAvatarPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="file:text-foreground"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -96,7 +122,15 @@ export const UserProfile: React.FC = () => {
                 <Button onClick={handleSave} disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
-                <Button variant="outline" onClick={() => setEditing(false)}>
+                <Button variant="outline" onClick={() => {
+                  setEditing(false);
+                  setAvatarFile(null);
+                  if (profile) {
+                    setAvatarPreview(profile.avatar || null);
+                    setUsername(profile.username || '');
+                    setBio(profile.bio || '');
+                  }
+                }}>
                   Cancel
                 </Button>
               </div>

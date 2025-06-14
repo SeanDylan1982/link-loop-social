@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +20,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  updateProfile: (updates: Partial<Profile>, avatarFile?: File | null) => Promise<void>;
   loading: boolean;
 }
 
@@ -123,12 +122,31 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const updateProfile = async (updates: Partial<Profile>) => {
+  const updateProfile = async (updates: Partial<Profile>, avatarFile?: File | null) => {
     if (!user) throw new Error('No user logged in');
+
+    const profileUpdates = { ...updates };
+
+    if (avatarFile) {
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      profileUpdates.avatar = urlData.publicUrl;
+    }
 
     const { error } = await supabase
       .from('profiles')
-      .update(updates)
+      .update({ ...profileUpdates, updated_at: new Date().toISOString() })
       .eq('id', user.id);
 
     if (error) {
