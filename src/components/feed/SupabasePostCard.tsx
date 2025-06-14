@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +6,7 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseComments } from './SupabaseComments';
 import { toast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 
 interface Post {
   id: string;
@@ -78,14 +78,18 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
     <Card className="mb-4">
       <CardHeader>
         <div className="flex items-center space-x-3">
-          <Avatar>
-            <AvatarImage src={post.profiles?.avatar} />
-            <AvatarFallback>
-              {post.profiles?.username?.charAt(0).toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <Link to={`/profile/${post.user_id}`}>
+            <Avatar>
+              <AvatarImage src={post.profiles?.avatar} />
+              <AvatarFallback>
+                {post.profiles?.username?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
           <div>
-            <p className="font-medium">{post.profiles?.username || 'Unknown User'}</p>
+            <Link to={`/profile/${post.user_id}`} className="hover:underline">
+              <p className="font-medium">{post.profiles?.username || 'Unknown User'}</p>
+            </Link>
             <p className="text-sm text-gray-500">
               {new Date(post.created_at).toLocaleDateString()}
             </p>

@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { SupabaseAuthProvider, useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseAuthForm } from '@/components/auth/SupabaseAuthForm';
 import { Navbar } from '@/components/layout/Navbar';
 import { SupabaseCreatePost } from '@/components/feed/SupabaseCreatePost';
@@ -9,11 +8,14 @@ import { UserProfile } from '@/components/profile/UserProfile';
 import { SupabaseFriendsList } from '@/components/friends/SupabaseFriendsList';
 import { MessagesList } from '@/components/messages/MessagesList';
 import { usePosts } from '@/hooks/usePosts';
+import { useSearchParams } from 'react-router-dom';
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
   const { posts, createPost, updatePost } = usePosts();
-  const [activeTab, setActiveTab] = useState('home');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'home';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   if (loading) {
     return (
@@ -71,9 +73,7 @@ const MainApp: React.FC = () => {
 
 const SupabaseIndex = () => {
   return (
-    <SupabaseAuthProvider>
-      <MainApp />
-    </SupabaseAuthProvider>
+    <MainApp />
   );
 };
 
