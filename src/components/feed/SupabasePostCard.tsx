@@ -1,10 +1,12 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share } from 'lucide-react';
+import { Heart, MessageCircle, Share2 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseComments } from './SupabaseComments';
+import { toast } from '@/hooks/use-toast';
 
 interface Post {
   id: string;
@@ -12,7 +14,7 @@ interface Post {
   content: string;
   image?: string;
   likes: string[];
-  shares: number;
+  shares: number | null;
   created_at: string;
   profiles?: {
     username: string;
@@ -42,7 +44,34 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
   };
 
   const handleShare = async () => {
-    await onPostUpdate(post.id, { shares: post.shares + 1 });
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+    const shareData = {
+      title: `Check out this post on SocialConnect!`,
+      text: post.content,
+      url: postUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        await onPostUpdate(post.id, { shares: (post.shares || 0) + 1 });
+        toast({ title: 'Post shared successfully!' });
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Error sharing post:', error);
+          toast({ title: 'Error', description: 'Could not share post.', variant: 'destructive' });
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        await onPostUpdate(post.id, { shares: (post.shares || 0) + 1 });
+        toast({ title: 'Link copied!', description: 'Post link copied to clipboard.' });
+      } catch (error) {
+        console.error('Error copying link:', error);
+        toast({ title: 'Error', description: 'Could not copy post link.', variant: 'destructive' });
+      }
+    }
   };
 
   return (
@@ -99,8 +128,8 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
             onClick={handleShare}
             className="flex items-center space-x-2 text-gray-500"
           >
-            <Share className="w-4 h-4" />
-            <span>{post.shares}</span>
+            <Share2 className="w-4 h-4" />
+            <span>{post.shares || 0}</span>
           </Button>
         </div>
         <SupabaseComments postId={post.id} />

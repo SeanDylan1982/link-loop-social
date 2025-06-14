@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -10,7 +11,7 @@ interface Post {
   content: string;
   image?: string;
   likes: string[];
-  shares: number;
+  shares: number | null;
   created_at: string;
   profiles?: {
     username: string;
