@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, Share } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { SupabaseComments } from './SupabaseComments';
 
 interface Post {
   id: string;
@@ -84,7 +84,12 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
             <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
             <span>{likesCount}</span>
           </Button>
-          <Button variant="ghost" size="sm" className="flex items-center space-x-2 text-gray-500">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center space-x-2 text-gray-500"
+            disabled
+          >
             <MessageCircle className="w-4 h-4" />
             <span>Comment</span>
           </Button>
@@ -98,6 +103,7 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
             <span>{post.shares}</span>
           </Button>
         </div>
+        <SupabaseComments postId={post.id} />
       </CardContent>
     </Card>
   );
