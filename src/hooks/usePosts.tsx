@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -49,19 +48,38 @@ export const usePosts = () => {
     }
   };
 
-  const createPost = async (content: string, image?: string) => {
+  const createPost = async (content: string, imageFile?: File | null) => {
     if (!user) {
       toast({ title: "Error", description: "You must be logged in to create a post", variant: "destructive" });
       return;
     }
 
     try {
+      let imageUrl: string | undefined = undefined;
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(filePath, imageFile);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(filePath);
+        imageUrl = urlData.publicUrl;
+      }
+
       const { data, error } = await supabase
         .from('posts')
         .insert([{
           user_id: user.id,
           content,
-          image
+          image: imageUrl
         }])
         .select(`
           *,
