@@ -6,36 +6,47 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { usePosts } from '@/hooks/usePosts';
 import { toast } from '@/hooks/use-toast';
 
 export const UserProfile: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, profile, updateProfile, loading } = useSupabaseAuth();
+  const { posts } = usePosts();
   const [editing, setEditing] = useState(false);
-  const [username, setUsername] = useState(user?.username || '');
-  const [bio, setBio] = useState(user?.bio || '');
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState(profile?.username || '');
+  const [bio, setBio] = useState(profile?.bio || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  if (loading || !profile) {
+    return (
+      <div className="min-h-[200px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSave = async () => {
-    setLoading(true);
-    
+    setIsSaving(true);
     try {
-      updateUser({ username, bio });
+      await updateProfile({ username, bio });
       setEditing(false);
       toast({ title: "Profile updated successfully!" });
     } catch (error) {
       toast({ 
         title: "Error", 
-        description: "Failed to update profile",
+        description: "Failed to update profile", 
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  const userPosts = JSON.parse(localStorage.getItem('socialPosts') || '[]')
-    .filter((post: any) => post.userId === user?.id);
+  const userPosts = posts?.filter((post) => post.user_id === user?.id);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -46,16 +57,16 @@ export const UserProfile: React.FC = () => {
         <CardContent>
           <div className="flex items-center space-x-6 mb-6">
             <Avatar className="w-24 h-24">
-              <AvatarImage src={user?.avatar} />
+              <AvatarImage src={profile?.avatar || undefined} />
               <AvatarFallback className="text-2xl">
-                {user?.username?.charAt(0).toUpperCase()}
+                {profile?.username?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold">{user?.username}</h2>
-              <p className="text-gray-600">{user?.email}</p>
+              <h2 className="text-2xl font-bold">{profile?.username}</h2>
+              <p className="text-gray-600">{profile?.email}</p>
               <p className="text-sm text-gray-500">
-                Joined {new Date(user?.createdAt || '').toLocaleDateString()}
+                Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
               </p>
             </div>
           </div>
@@ -81,8 +92,8 @@ export const UserProfile: React.FC = () => {
                 />
               </div>
               <div className="flex space-x-2">
-                <Button onClick={handleSave} disabled={loading}>
-                  {loading ? 'Saving...' : 'Save'}
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save'}
                 </Button>
                 <Button variant="outline" onClick={() => setEditing(false)}>
                   Cancel
@@ -93,7 +104,7 @@ export const UserProfile: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <h3 className="font-medium text-gray-700">Bio</h3>
-                <p className="text-gray-600">{user?.bio || 'No bio added yet.'}</p>
+                <p className="text-gray-600">{profile?.bio || 'No bio added yet.'}</p>
               </div>
               <Button onClick={() => setEditing(true)}>
                 Edit Profile
@@ -105,19 +116,19 @@ export const UserProfile: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Posts ({userPosts.length})</CardTitle>
+          <CardTitle>Your Posts ({userPosts?.length || 0})</CardTitle>
         </CardHeader>
         <CardContent>
-          {userPosts.length > 0 ? (
+          {userPosts && userPosts.length > 0 ? (
             <div className="space-y-4">
-              {userPosts.map((post: any) => (
+              {userPosts.map((post) => (
                 <div key={post.id} className="p-4 border rounded-lg">
                   <p className="mb-2">{post.content}</p>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <span>{post.likes?.length || 0} likes</span>
-                    <span>{post.comments?.length || 0} comments</span>
+                    {/* Comments are not handled in this file, so omitting */}
                     <span>{post.shares || 0} shares</span>
-                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                    <span>{post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}</span>
                   </div>
                 </div>
               ))}

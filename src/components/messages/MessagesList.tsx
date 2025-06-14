@@ -4,66 +4,108 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
-import { User, Message } from '@/types';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Send } from 'lucide-react';
 
+interface Profile {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  bio?: string;
+}
+
+interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  read: boolean;
+}
+
 export const MessagesList: React.FC = () => {
-  const { user } = useAuth();
-  const [friends, setFriends] = useState<User[]>([]);
-  const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
+  const { user, profile } = useSupabaseAuth();
+  const [friends, setFriends] = useState<Profile[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Fetch friends: users you have friendship with
   useEffect(() => {
-    if (user) {
-      const allUsers = JSON.parse(localStorage.getItem('socialUsers') || '[]');
-      const userFriends = allUsers.filter((u: User) => user.friends.includes(u.id));
-      setFriends(userFriends);
-    }
+    const fetchFriends = async () => {
+      if (!user) return;
+      // Get friendships where the user is user1 OR user2
+      const { data, error } = await supabase
+        .from('friendships')
+        .select('user1_id, user2_id')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+      if (error) return;
+      const otherUserIds: string[] = data
+        ? data.map((f: any) =>
+            f.user1_id === user.id ? f.user2_id : f.user1_id
+          )
+        : [];
+      // Fetch profiles for those ids
+      if (otherUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', otherUserIds);
+        setFriends(profiles || []);
+      } else {
+        setFriends([]);
+      }
+    };
+    fetchFriends();
   }, [user]);
 
+  // Fetch messages with selected friend
   useEffect(() => {
-    if (selectedFriend && user) {
-      const allMessages = JSON.parse(localStorage.getItem('socialMessages') || '[]');
-      const conversationMessages = allMessages.filter((msg: Message) =>
-        (msg.senderId === user.id && msg.receiverId === selectedFriend.id) ||
-        (msg.senderId === selectedFriend.id && msg.receiverId === user.id)
-      );
-      setMessages(conversationMessages.sort((a: Message, b: Message) => 
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      ));
-    }
+    const fetchMessages = async () => {
+      if (!user || !selectedFriend) return;
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(
+          `(sender_id.eq.${user.id},receiver_id.eq.${selectedFriend.id}),(sender_id.eq.${selectedFriend.id},receiver_id.eq.${user.id})`
+        )
+        .order('created_at', { ascending: true });
+      if (!error && data) {
+        setMessages(data as Message[]);
+      }
+    };
+    fetchMessages();
   }, [selectedFriend, user]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedFriend || !user) return;
-
     setLoading(true);
-    
     try {
-      const message: Message = {
-        id: Date.now().toString(),
-        senderId: user.id,
-        receiverId: selectedFriend.id,
-        content: newMessage.trim(),
-        createdAt: new Date(),
-        read: false
-      };
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            sender_id: user.id,
+            receiver_id: selectedFriend.id,
+            content: newMessage.trim(),
+            read: false
+          }
+        ])
+        .select('*')
+        .single();
+      if (error) throw error;
 
-      const allMessages = JSON.parse(localStorage.getItem('socialMessages') || '[]');
-      allMessages.push(message);
-      localStorage.setItem('socialMessages', JSON.stringify(allMessages));
-
-      setMessages([...messages, message]);
+      setMessages([...messages, data as Message]);
       setNewMessage('');
       toast({ title: "Message sent!" });
     } catch (error) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "Failed to send message",
         variant: "destructive"
       });
@@ -92,8 +134,10 @@ export const MessagesList: React.FC = () => {
                     }`}
                   >
                     <Avatar>
-                      <AvatarImage src={friend.avatar} />
-                      <AvatarFallback>{friend.username.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={friend.avatar || undefined} />
+                      <AvatarFallback>
+                        {friend.username.charAt(0).toUpperCase()}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <p className="font-medium">{friend.username}</p>
@@ -120,8 +164,10 @@ export const MessagesList: React.FC = () => {
               <CardHeader className="border-b">
                 <div className="flex items-center space-x-3">
                   <Avatar>
-                    <AvatarImage src={selectedFriend.avatar} />
-                    <AvatarFallback>{selectedFriend.username.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={selectedFriend.avatar || undefined} />
+                    <AvatarFallback>
+                      {selectedFriend.username.charAt(0).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{selectedFriend.username}</p>
@@ -136,20 +182,26 @@ export const MessagesList: React.FC = () => {
                     messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
                           className={`max-w-xs px-4 py-2 rounded-lg ${
-                            message.senderId === user?.id
+                            message.sender_id === user?.id
                               ? 'bg-blue-500 text-white'
                               : 'bg-gray-200 text-gray-800'
                           }`}
                         >
                           <p>{message.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            message.senderId === user?.id ? 'text-blue-100' : 'text-gray-500'
-                          }`}>
-                            {new Date(message.createdAt).toLocaleTimeString()}
+                          <p
+                            className={`text-xs mt-1 ${
+                              message.sender_id === user?.id
+                                ? 'text-blue-100'
+                                : 'text-gray-500'
+                            }`}
+                          >
+                            {message.created_at
+                              ? new Date(message.created_at).toLocaleTimeString()
+                              : ""}
                           </p>
                         </div>
                       </div>
