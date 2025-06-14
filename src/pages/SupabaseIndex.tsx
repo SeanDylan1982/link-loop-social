@@ -6,7 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { SupabaseCreatePost } from '@/components/feed/SupabaseCreatePost';
 import { SupabasePostCard } from '@/components/feed/SupabasePostCard';
 import { UserProfile } from '@/components/profile/UserProfile';
-import { FriendsList } from '@/components/friends/FriendsList';
+import { SupabaseFriendsList } from '@/components/friends/SupabaseFriendsList';
 import { MessagesList } from '@/components/messages/MessagesList';
 import { usePosts } from '@/hooks/usePosts';
 
@@ -62,7 +62,7 @@ const MainApp: React.FC = () => {
         )}
 
         {activeTab === 'profile' && <UserProfile />}
-        {activeTab === 'friends' && <FriendsList />}
+        {activeTab === 'friends' && <SupabaseFriendsList />}
         {activeTab === 'messages' && <MessagesList />}
       </div>
     </div>
