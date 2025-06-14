@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/layout/Navbar';
-import { UserPlus, Check, Clock, MessageCircle } from 'lucide-react';
+import { UserPlus, Clock, MessageCircle } from 'lucide-react';
 
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { user, loading: authLoading } = useSupabaseAuth();
   const { profile, posts, loading: profileLoading, error } = useUserProfile(userId);
-  const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading, refetchStatus } = useFriendshipStatus(userId);
+  const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading } = useFriendshipStatus(userId);
   const navigate = useNavigate();
 
   const handleNavChange = (tab: string) => {
@@ -23,9 +23,9 @@ const UserProfilePage: React.FC = () => {
 
   const loading = authLoading || profileLoading;
 
-  const renderFriendOrMessageButton = () => {
-    if (friendshipLoading || !user || user.id === userId) return null;
-    // Only friends: show message. Not friends: show add friend. Others: status.
+  // Show the Send Message button if users are friends (do not show for own profile)
+  const renderSendMessageButton = () => {
+    if (!user || !userId || user.id === userId) return null;
     if (friendshipStatus === 'friends') {
       return (
         <Button asChild>
@@ -34,6 +34,15 @@ const UserProfilePage: React.FC = () => {
           </Link>
         </Button>
       );
+    }
+    return null;
+  };
+
+  // Render the add/request/respond buttons as before for non-friend states
+  const renderFriendControls = () => {
+    if (friendshipLoading || !user || user.id === userId) return null;
+    if (friendshipStatus === 'friends') {
+      return null; // Message button shown above
     }
     if (friendshipStatus === 'not_friends') {
       return (
@@ -85,7 +94,10 @@ const UserProfilePage: React.FC = () => {
                         Joined {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : ""}
                     </p>
                   </div>
-                  {renderFriendOrMessageButton()}
+                  <div className="flex flex-col gap-2 items-end">
+                    {renderSendMessageButton()}
+                    {renderFriendControls()}
+                  </div>
                 </div>
                  <div>
                     <h3 className="font-medium text-gray-700">Bio</h3>
