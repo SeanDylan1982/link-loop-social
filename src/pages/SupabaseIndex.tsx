@@ -9,6 +9,7 @@ import { SupabaseFriendsList } from '@/components/friends/SupabaseFriendsList';
 import { MessagesList } from '@/components/messages/MessagesList';
 import { usePosts } from '@/hooks/usePosts';
 import { useSearchParams } from 'react-router-dom';
+import { SupabaseSearch } from '@/components/search/SupabaseSearch';
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
@@ -35,7 +36,8 @@ const MainApp: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
-      
+      {/* Add search bar at the top */}
+      <SupabaseSearch />
       <div className="container mx-auto px-4 py-6">
         {activeTab === 'home' && (
           <div className="max-w-2xl mx-auto">
