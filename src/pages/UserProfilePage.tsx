@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -113,9 +112,13 @@ const UserProfilePage: React.FC = () => {
                 {posts && posts.length > 0 ? (
                   <div className="space-y-4">
                     {posts.map((post) => (
-                      <div key={post.id} className="p-4 border rounded-lg">
+                      <div
+                        key={post.id}
+                        className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                        onClick={() => navigate(`/post/${post.id}`)}
+                      >
                         <p className="mb-2">{post.content}</p>
-                         {post.image && (
+                        {post.image && (
                           <img src={post.image} alt="Post content" className="w-full rounded-lg mb-4 max-h-96 object-cover"/>
                         )}
                         <div className="flex items-center space-x-4 text-sm text-gray-500">

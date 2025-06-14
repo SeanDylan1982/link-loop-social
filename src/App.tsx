@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import { SupabaseAuthProvider } from "./hooks/useSupabaseAuth";
 import UserProfilePage from "./pages/UserProfilePage";
 import ConversationPage from "./pages/ConversationPage";
+import PostPage from "./pages/PostPage";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<SupabaseIndex />} />
             <Route path="/profile/:userId" element={<UserProfilePage />} />
+            <Route path="/post/:postId" element={<PostPage />} />
             <Route path="/conversation/:userId" element={<ConversationPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
@@ -33,4 +34,3 @@ const App = () => (
 );
 
 export default App;
-

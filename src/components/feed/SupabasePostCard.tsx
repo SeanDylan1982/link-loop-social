@@ -6,7 +6,7 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseComments } from './SupabaseComments';
 import { toast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface Post {
   id: string;
@@ -29,6 +29,7 @@ interface SupabasePostCardProps {
 
 export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPostUpdate }) => {
   const { user } = useSupabaseAuth();
+  const navigate = useNavigate();
   
   const isLiked = user ? post.likes.includes(user.id) : false;
   const likesCount = post.likes.length;
@@ -75,10 +76,13 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
   };
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 cursor-pointer" onClick={() => navigate(`/post/${post.id}`)}>
       <CardHeader>
         <div className="flex items-center space-x-3">
-          <Link to={`/profile/${post.user_id}`}>
+          <Link
+            to={`/profile/${post.user_id}`}
+            onClick={e => e.stopPropagation()}
+          >
             <Avatar>
               <AvatarImage src={post.profiles?.avatar} />
               <AvatarFallback>
@@ -87,7 +91,11 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
             </Avatar>
           </Link>
           <div>
-            <Link to={`/profile/${post.user_id}`} className="hover:underline">
+            <Link
+              to={`/profile/${post.user_id}`}
+              className="hover:underline"
+              onClick={e => e.stopPropagation()}
+            >
               <p className="font-medium">{post.profiles?.username || 'Unknown User'}</p>
             </Link>
             <p className="text-sm text-gray-500">
@@ -105,11 +113,11 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
             className="w-full rounded-lg mb-4"
           />
         )}
-        <div className="flex items-center space-x-4 pt-4 border-t">
+        <div className="flex items-center space-x-4 pt-4 border-t" onClick={e => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleLike}
+            onClick={(e) => { e.stopPropagation(); handleLike(); }}
             className={`flex items-center space-x-2 ${
               isLiked ? 'text-red-500' : 'text-gray-500'
             }`}
@@ -122,6 +130,7 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
             size="sm"
             className="flex items-center space-x-2 text-gray-500"
             disabled
+            onClick={e => e.stopPropagation()}
           >
             <MessageCircle className="w-4 h-4" />
             <span>Comment</span>
@@ -129,14 +138,16 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={handleShare}
+            onClick={(e) => { e.stopPropagation(); handleShare(); }}
             className="flex items-center space-x-2 text-gray-500"
           >
             <Share2 className="w-4 h-4" />
             <span>{post.shares || 0}</span>
           </Button>
         </div>
-        <SupabaseComments postId={post.id} />
+        <div onClick={e => e.stopPropagation()}>
+          <SupabaseComments postId={post.id} />
+        </div>
       </CardContent>
     </Card>
   );
