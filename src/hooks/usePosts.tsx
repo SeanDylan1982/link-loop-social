@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { toast } from '@/hooks/use-toast';
 
+// Add profile object type to Post interface
 interface Post {
   id: string;
   user_id: string;
@@ -12,6 +13,10 @@ interface Post {
   likes: string[];
   shares: number;
   created_at: string;
+  profiles?: {
+    username: string;
+    avatar?: string;
+  };
 }
 
 export const usePosts = () => {
@@ -23,7 +28,13 @@ export const usePosts = () => {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('*')
+        .select(`
+          *,
+          profiles:profiles (
+            username,
+            avatar
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -52,7 +63,13 @@ export const usePosts = () => {
           content,
           image
         }])
-        .select('*')
+        .select(`
+          *,
+          profiles:profiles (
+            username,
+            avatar
+          )
+        `)
         .single();
 
       if (error) {
@@ -69,17 +86,25 @@ export const usePosts = () => {
 
   const updatePost = async (postId: string, updates: Partial<Post>) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('posts')
         .update(updates)
-        .eq('id', postId);
+        .eq('id', postId)
+        .select(`
+          *,
+          profiles:profiles (
+            username,
+            avatar
+          )
+        `)
+        .single();
 
       if (error) {
         throw error;
       }
 
-      setPosts(posts.map(post => 
-        post.id === postId ? { ...post, ...updates } : post
+      setPosts(posts.map(post =>
+        post.id === postId ? { ...post, ...data } : post
       ));
     } catch (error) {
       console.error('Error updating post:', error);
