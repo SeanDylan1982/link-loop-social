@@ -8,6 +8,7 @@ import SupabaseIndex from "./pages/SupabaseIndex";
 import NotFound from "./pages/NotFound";
 import { SupabaseAuthProvider } from "./hooks/useSupabaseAuth";
 import UserProfilePage from "./pages/UserProfilePage";
+import ConversationPage from "./pages/ConversationPage";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<SupabaseIndex />} />
             <Route path="/profile/:userId" element={<UserProfilePage />} />
+            <Route path="/conversation/:userId" element={<ConversationPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -31,3 +33,4 @@ const App = () => (
 );
 
 export default App;
+

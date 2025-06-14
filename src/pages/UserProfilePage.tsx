@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/layout/Navbar';
-import { UserPlus, Check, Clock } from 'lucide-react';
+import { UserPlus, Check, Clock, MessageCircle } from 'lucide-react';
 
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -28,7 +28,7 @@ const UserProfilePage: React.FC = () => {
 
     switch (friendshipStatus) {
       case 'friends':
-        return <Button variant="outline" disabled><Check className="mr-2 h-4 w-4" /> Friends</Button>;
+        return <Button asChild><Link to={`/conversation/${userId}`}><MessageCircle className="mr-2 h-4 w-4" /> Send Message</Link></Button>;
       case 'request_sent':
         return <Button variant="outline" disabled><Clock className="mr-2 h-4 w-4" /> Request Sent</Button>;
       case 'request_received':
@@ -110,3 +110,4 @@ const UserProfilePage: React.FC = () => {
 };
 
 export default UserProfilePage;
+
