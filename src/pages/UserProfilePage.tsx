@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useFriendshipStatus } from '@/hooks/useFriendshipStatus';
@@ -15,6 +15,11 @@ const UserProfilePage: React.FC = () => {
   const { user, loading: authLoading } = useSupabaseAuth();
   const { profile, posts, loading: profileLoading, error } = useUserProfile(userId);
   const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading } = useFriendshipStatus(userId);
+  const navigate = useNavigate();
+
+  const handleNavChange = (tab: string) => {
+    navigate(`/?tab=${tab}`);
+  };
 
   const loading = authLoading || profileLoading;
 
@@ -29,7 +34,7 @@ const UserProfilePage: React.FC = () => {
       case 'request_received':
         return <Button asChild><Link to="/?tab=friends">Respond to Request</Link></Button>;
       case 'not_friends':
-        return <Button onClick={sendFriendRequest}><UserPlus className="mr-2 h-4 w-4" /> Add Friend</Button>;
+        return <Button onClick={() => sendFriendRequest()}><UserPlus className="mr-2 h-4 w-4" /> Add Friend</Button>;
       default:
         return null;
     }
@@ -37,7 +42,7 @@ const UserProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      <Navbar activeTab={user?.id === userId ? 'profile' : ''} onTabChange={handleNavChange}/>
       <div className="container mx-auto px-4 py-6">
         {loading ? (
           <div className="text-center py-8 text-gray-500">Loading profile...</div>

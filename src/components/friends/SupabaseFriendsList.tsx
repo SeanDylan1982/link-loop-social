@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,83 +9,92 @@ import { Link } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tables } from '@/integrations/supabase/types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 type Profile = Tables<'profiles'>;
 type FriendRequest = Tables<'friend_requests'> & { profiles: Profile };
 
+const fetchFriends = async (userId: string) => {
+  const { data: friendships, error: friendshipsError } = await supabase
+    .from('friendships')
+    .select('user1_id, user2_id')
+    .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+
+  if (friendshipsError) throw friendshipsError;
+
+  const friendIds = friendships.map(f => f.user1_id === userId ? f.user2_id : f.user1_id);
+
+  if (friendIds.length > 0) {
+    const { data: friendProfiles, error: friendProfilesError } = await supabase
+      .from('profiles').select('*').in('id', friendIds);
+    if (friendProfilesError) throw friendProfilesError;
+    return friendProfiles || [];
+  }
+  return [];
+};
+
+const fetchFriendRequests = async (userId: string) => {
+  const { data: friendRequests, error: requestsError } = await supabase
+    .from('friend_requests')
+    .select(`*, profiles:sender_id (*)`)
+    .eq('receiver_id', userId)
+    .eq('status', 'pending');
+  
+  if (requestsError) throw requestsError;
+  return (friendRequests as any[] || []) as FriendRequest[];
+};
+
 export const SupabaseFriendsList: React.FC = () => {
   const { user } = useSupabaseAuth();
-  const [friends, setFriends] = useState<Profile[]>([]);
-  const [requests, setRequests] = useState<FriendRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchFriendsAndRequests = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data: friendships, error: friendshipsError } = await supabase
-        .from('friendships')
-        .select('user1_id, user2_id')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+  const { data: friends = [], isLoading: friendsLoading } = useQuery({
+    queryKey: ['friends', user?.id],
+    queryFn: () => fetchFriends(user!.id),
+    enabled: !!user,
+  });
 
-      if (friendshipsError) throw friendshipsError;
+  const { data: requests = [], isLoading: requestsLoading } = useQuery({
+    queryKey: ['friendRequests', user?.id],
+    queryFn: () => fetchFriendRequests(user!.id),
+    enabled: !!user,
+  });
 
-      const friendIds = friendships.map(f => f.user1_id === user.id ? f.user2_id : f.user1_id);
-
-      if (friendIds.length > 0) {
-        const { data: friendProfiles, error: friendProfilesError } = await supabase
-          .from('profiles').select('*').in('id', friendIds);
-        if (friendProfilesError) throw friendProfilesError;
-        setFriends(friendProfiles || []);
-      } else {
-        setFriends([]);
-      }
-
-      const { data: friendRequests, error: requestsError } = await supabase
-        .from('friend_requests')
-        .select(`*, profiles:sender_id (*)`)
-        .eq('receiver_id', user.id)
-        .eq('status', 'pending');
+  const handleRequestMutation = useMutation({
+    mutationFn: async ({ request, accepted }: { request: FriendRequest, accepted: boolean }) => {
+      if (!user) throw new Error("User not authenticated");
       
-      if (requestsError) throw requestsError;
-      setRequests((friendRequests as any) || []);
-
-    } catch (error) {
-      console.error('Error fetching friends data:', error);
-      toast({ title: "Error", description: "Could not load friends data.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchFriendsAndRequests();
-  }, [fetchFriendsAndRequests]);
-
-  const handleRequest = async (request: FriendRequest, accepted: boolean) => {
-    if (!user) return;
-    
-    if (accepted) {
-      const { error: friendshipError } = await supabase.from('friendships').insert({ user1_id: user.id, user2_id: request.sender_id });
-      if (friendshipError) {
-        console.error('Error creating friendship:', friendshipError);
-        toast({ title: "Error", description: "Could not accept request.", variant: "destructive" });
-        return;
+      if (accepted) {
+        const { error: friendshipError } = await supabase.from('friendships').insert({ user1_id: user.id, user2_id: request.sender_id });
+        if (friendshipError) {
+          if (friendshipError.code !== '23505') {
+            throw friendshipError;
+          }
+        }
       }
-    }
-    
-    const { error: updateError } = await supabase.from('friend_requests').update({ status: accepted ? 'accepted' : 'rejected' }).eq('id', request.id);
-
-    if (updateError) {
-      console.error('Error updating request:', updateError);
-      toast({ title: "Error", description: "Could not process request.", variant: "destructive" });
-    } else {
+      
+      const { error: updateError } = await supabase.from('friend_requests').update({ status: accepted ? 'accepted' : 'rejected' }).eq('id', request.id);
+      if (updateError) throw updateError;
+      
+      return { accepted, senderId: request.sender_id };
+    },
+    onSuccess: ({ accepted, senderId }) => {
       toast({ title: `Request ${accepted ? 'accepted' : 'rejected'}` });
-      fetchFriendsAndRequests();
-    }
+      queryClient.invalidateQueries({ queryKey: ['friends', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['friendshipStatus', user?.id, senderId] });
+      queryClient.invalidateQueries({ queryKey: ['friendshipStatus', senderId, user?.id] });
+    },
+    onError: (error: any) => {
+      console.error('Error handling request:', error);
+      toast({ title: "Error", description: "Could not process request.", variant: "destructive" });
+    },
+  });
+
+  const loading = friendsLoading || requestsLoading;
+
+  const handleRequest = (request: FriendRequest, accepted: boolean) => {
+    handleRequestMutation.mutate({ request, accepted });
   };
 
   return (
@@ -134,8 +143,8 @@ export const SupabaseFriendsList: React.FC = () => {
                       <span>{request.profiles.username}</span>
                     </Link>
                     <div className="flex space-x-2">
-                      <Button size="sm" onClick={() => handleRequest(request, true)}>Accept</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRequest(request, false)}>Decline</Button>
+                      <Button size="sm" onClick={() => handleRequest(request, true)} disabled={handleRequestMutation.isPending}>Accept</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleRequest(request, false)} disabled={handleRequestMutation.isPending}>Decline</Button>
                     </div>
                   </div>
                 ))}
