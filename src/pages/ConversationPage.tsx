@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConversation } from '@/hooks/useConversation';
@@ -18,7 +17,12 @@ const ConversationPage: React.FC = () => {
     const [loading, setLoading] = React.useState(true);
     const convId = conversationId || undefined;
 
-    // Fetch conversation details (participants, is_group, etc.)
+    // Enhanced logging!
+    useEffect(() => {
+      console.log('[ConversationPage] useParams', { userId, conversationId });
+      console.log('[ConversationPage] Current user:', user);
+    }, [userId, conversationId, user]);
+
     React.useEffect(() => {
       (async () => {
         if (convId) {
@@ -39,14 +43,13 @@ const ConversationPage: React.FC = () => {
     // Infer receiverId for DMs:
     let receiverId: string | undefined = undefined;
     if (conv && !conv.is_group && user) {
-      // Find the participant that's NOT the current user; fallback to undefined
       const participantProfiles = conv.participants as any[];
       const other = participantProfiles?.find((p) => p.profiles?.id && p.profiles.id !== user.id);
       receiverId = other?.profiles?.id;
-      // Debug
       console.log("[ConversationPage] receiverId for DM:", receiverId);
     }
 
+    console.log('[ConversationPage] Calling useConversation:', { convId, userId, receiverId });
     const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(
       convId ?? userId,
       receiverId
@@ -55,23 +58,29 @@ const ConversationPage: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     useEffect(() => {
-      console.log("[ConversationPage] messages array", messages);
-    }, [messages]);
+      console.log("[ConversationPage] messages array", messages, "messagesLoading:", messagesLoading, "conv:", conv);
+    }, [messages, messagesLoading, conv]);
     
     const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newMessage.trim()) {
-            sendMessage(newMessage.trim());
-            setNewMessage('');
-        }
+      e.preventDefault();
+      if (newMessage.trim()) {
+        console.log('[ConversationPage] Sending message:', {
+            content: newMessage,
+            conversation_id: convId ?? userId,
+            receiver_id: receiverId,
+            sender_id: user?.id
+        });
+        sendMessage(newMessage.trim());
+        setNewMessage('');
+      }
     };
 
     const handleNavChange = (tab: string) => {
-        navigate(`/?tab=${tab}`);
+      navigate(`/?tab=${tab}`);
     };
     
     const loadingAny = loading || messagesLoading;
@@ -91,7 +100,6 @@ const ConversationPage: React.FC = () => {
                             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
                                 Back
                             </Button>
-                            {/* Show avatar/title for groups, username(s) for dm */}
                             {conv.is_group ? (
                               <>
                                 <Avatar>
@@ -141,7 +149,7 @@ const ConversationPage: React.FC = () => {
                                 autoComplete="off"
                                 disabled={!conv}
                             />
-                            <Button type="submit" disabled={isSending || !conv} size="icon">
+                            <Button type="submit" disabled={isSending || !conv || newMessage.trim().length === 0} size="icon">
                                 <span className="sr-only">Send</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
                             </Button>
