@@ -19,6 +19,7 @@ const ConversationPage: React.FC = () => {
     const [loading, setLoading] = React.useState(true);
     const convId = conversationId || undefined;
 
+    // Fetch conversation details (participants, is_group, etc.)
     React.useEffect(() => {
       (async () => {
         if (convId) {
@@ -34,8 +35,18 @@ const ConversationPage: React.FC = () => {
       })();
     }, [convId]);
 
+    // Infer receiverId for DMs:
+    let receiverId: string | undefined = undefined;
+    if (conv && !conv.is_group && user) {
+      // Find the participant that's NOT the current user; fallback to undefined
+      const participantProfiles = conv.participants as any[];
+      const other = participantProfiles?.find((p) => p.profiles?.id && p.profiles.id !== user.id);
+      receiverId = other?.profiles?.id;
+    }
+
     const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(
-      convId ?? userId // For direct/legacy flow
+      convId ?? userId, // For direct/legacy flow this stays
+      receiverId // This is undefined for group chats, set for DMs
     );
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
