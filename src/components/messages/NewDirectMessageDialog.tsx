@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useConversations } from "@/hooks/useConversations";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   open: boolean;
@@ -22,17 +22,31 @@ export const NewDirectMessageDialog: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const fetchFriends = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const f = await getFriends();
+      setFriends(f);
+    } catch (err: any) {
+      setError("Failed to load friends. Please try again.");
+      setFriends([]);
+      toast({ title: "Error loading friends", description: err?.message || "" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
-      setLoading(true);
-      getFriends().then((f) => {
-        setFriends(f);
-        setLoading(false);
-      });
+      fetchFriends();
       setSearch("");
     }
-  }, [open, getFriends]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const filteredFriends = friends.filter(
     (f) =>
@@ -62,6 +76,18 @@ export const NewDirectMessageDialog: React.FC<Props> = ({
         </DialogHeader>
         {loading ? (
           <div className="py-4 text-gray-500">Loading friends...</div>
+        ) : error ? (
+          <div className="flex flex-col items-center gap-4 py-6 text-red-500">
+            <div>{error}</div>
+            <Button onClick={fetchFriends} disabled={loading || creating} size="sm">
+              Retry
+            </Button>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
+                Cancel
+              </Button>
+            </DialogFooter>
+          </div>
         ) : (
           <div className="space-y-4">
             <Input
