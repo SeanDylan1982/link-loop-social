@@ -1,23 +1,46 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
-import { Plus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
+import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 
 export const ConversationsList: React.FC<{ onCreateGroup: () => void }> = ({ onCreateGroup }) => {
   const { conversations, isLoading } = useConversations();
   const navigate = useNavigate();
 
+  // State for DM dialog modal
+  const [showDMDialog, setShowDMDialog] = useState(false);
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Conversations</CardTitle>
-        <Button variant="ghost" size="icon" onClick={onCreateGroup} title="Start group chat">
-          <Plus />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowDMDialog(true)}
+            title="Start private message"
+            className="flex items-center gap-1"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>New Message</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCreateGroup}
+            title="Start group chat"
+            className="flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Group Message</span>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -63,6 +86,12 @@ export const ConversationsList: React.FC<{ onCreateGroup: () => void }> = ({ onC
           </div>
         )}
       </CardContent>
+      {/* DM modal */}
+      <NewDirectMessageDialog
+        open={showDMDialog}
+        onOpenChange={setShowDMDialog}
+        afterNavigate={id => navigate(`/conversation/${id}`)}
+      />
     </Card>
   );
 };

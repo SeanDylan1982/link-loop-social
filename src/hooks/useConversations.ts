@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -7,6 +6,7 @@ import { Tables } from '@/integrations/supabase/types';
 export type Conversation = Tables<'conversations'> & { participants: { id: string, username: string, avatar: string | null }[] };
 export type ConversationParticipant = Tables<'conversation_participants'>;
 
+// Fetch all conversations for a user
 const getUserConversations = async (userId: string) => {
   // Fetch conversations where user is a participant, including participants and their profile.
   // Participants profile: join via conversation_participants and profiles
@@ -43,6 +43,7 @@ const getUserConversations = async (userId: string) => {
   })) as Conversation[];
 };
 
+// Fetch all profiles except yours
 const getAllProfiles = async (excludeId: string) => {
   const { data, error } = await supabase
     .from('profiles')
@@ -52,10 +53,10 @@ const getAllProfiles = async (excludeId: string) => {
   return data || [];
 };
 
+// Create conversation
 const createGroupConversation = async ({
   title, participantIds, isGroup
 }: { title: string; participantIds: string[]; isGroup: boolean }) => {
-  // Create conversation
   const { data: conversation, error } = await supabase
     .from('conversations')
     .insert([
@@ -73,6 +74,63 @@ const createGroupConversation = async ({
   await supabase.from('conversation_participants').insert(participantsToAdd);
 
   return conversation;
+};
+
+// Get your friends for the DM dialog
+const getFriendsList = async (userId: string) => {
+  // Get friendships where you're user1 or user2, and get profile for the other user
+  const { data: friendships } = await supabase
+    .from('friendships')
+    .select('user1_id, user2_id');
+  if (!friendships) return [];
+  const friendIds = friendships
+    .filter(f => f.user1_id === userId || f.user2_id === userId)
+    .map(f => f.user1_id === userId ? f.user2_id : f.user1_id);
+  if (friendIds.length === 0) return [];
+  const { data: friendProfiles } = await supabase
+    .from('profiles')
+    .select('id, username, avatar')
+    .in('id', friendIds);
+  return friendProfiles || [];
+};
+
+// Find or create a direct (private) conversation between two users
+const getOrCreateDirectConversation = async ({
+  userId,
+  friendId,
+}: { userId: string, friendId: string }) => {
+  // 1. Search for existing direct conversation with both participants, is_group false
+  const { data: candidateConvs, error } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('is_group', false);
+
+  if (error) throw error;
+  // For each, check if both userId and friendId exist in conversation_participants (exactly two participants)
+  for (const conv of candidateConvs || []) {
+    // Fetch participants for this conversation
+    const { data: parts } = await supabase
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', conv.id);
+    const participantIds = (parts || []).map(p => p.user_id);
+    if (participantIds.length === 2 && participantIds.includes(userId) && participantIds.includes(friendId)) {
+      return { id: conv.id };
+    }
+  }
+  // 2. Otherwise create direct conversation
+  const { data: conversation, error: cError } = await supabase
+    .from('conversations')
+    .insert([{ title: null, is_group: false }])
+    .select()
+    .single();
+  if (cError) throw cError;
+  // Insert participants
+  await supabase.from('conversation_participants').insert([
+    { conversation_id: conversation.id, user_id: userId },
+    { conversation_id: conversation.id, user_id: friendId }
+  ]);
+  return { id: conversation.id };
 };
 
 export const useConversations = () => {
@@ -95,11 +153,25 @@ export const useConversations = () => {
     }
   });
 
+  // Get friends for DMs
+  const getFriends = () => getFriendsList(user!.id);
+
+  // Logic for finding/creating direct conversations
+  const getOrCreateDM = async (friendId: string) => {
+    if (!user) throw new Error("Not authenticated");
+    const conv = await getOrCreateDirectConversation({ userId: user.id, friendId });
+    queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+    return conv;
+  };
+
   return {
     conversations: conversations ?? [],
     getProfiles,
     isLoading,
     createConversation: createConversationMutation.mutateAsync,
     isCreating: createConversationMutation.isPending,
+    // New for DMs:
+    getFriends,
+    getOrCreateDM,
   };
 };
