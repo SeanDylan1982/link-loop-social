@@ -6,6 +6,7 @@ import { Input } from "../ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useConversations } from "@/hooks/useConversations";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth"; // new import
 
 interface DirectMessageModalProps {
   open: boolean;
@@ -26,22 +27,22 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
+  const { user } = useSupabaseAuth(); // get authenticated user
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!friend || !message.trim()) return;
+    if (!friend || !message.trim() || !user) return;
 
     setSending(true);
     try {
-      // Get (or create) the conversation, then send the message via REST call
+      // Get (or create) the conversation
       const conv = await getOrCreateDM(friend.id);
       if (conv?.id) {
-        // Insert the first message into the conversation (mutation via Supabase rpc or messages table)
-        // Direct insert:
+        // Insert the first message into the conversation
         const { supabase } = await import("@/integrations/supabase/client");
         const { error } = await supabase.from("messages").insert({
           conversation_id: conv.id,
-          sender_id: null, // Will be auto-populated by RLS or put current user's id if needed elsewhere
+          sender_id: user.id, // set sender_id to authenticated user id
           receiver_id: friend.id,
           content: message.trim(),
         });
