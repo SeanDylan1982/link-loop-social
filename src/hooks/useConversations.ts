@@ -13,10 +13,18 @@ const getUserConversations = async (userId: string) => {
     .from('conversation_participants')
     .select('conversation_id')
     .eq('user_id', userId);
-
-  if (partErr) throw partErr;
+  console.log('[getUserConversations] participationRows:', participationRows);
+  if (partErr) {
+    console.error('[getUserConversations] participationRows error:', partErr);
+    throw partErr;
+  }
   const ids = participationRows?.map(cp => cp.conversation_id) || [];
-  if (ids.length === 0) return []; // <-- fix: don't query with an empty id list
+  console.log('[getUserConversations] conversation IDs:', ids);
+
+  if (ids.length === 0) {
+    console.warn('[getUserConversations] No conversation_participants found for userId:', userId);
+    return []; // <-- fix: don't query with an empty id list
+  }
 
   // Now fetch conversation details if there are any
   const { data, error } = await supabase
@@ -32,8 +40,12 @@ const getUserConversations = async (userId: string) => {
     `)
     .in('id', ids)
     .order('updated_at', { ascending: false });
+  if (error) {
+    console.error('[getUserConversations] conversations fetch error:', error);
+    throw error;
+  }
+  console.log('[getUserConversations] conversations fetch data:', data);
 
-  if (error) throw error;
   // Flatten for UI
   return (data || []).map((c: any) => ({
     ...c,
