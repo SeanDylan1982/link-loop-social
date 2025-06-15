@@ -6,6 +6,7 @@ import { Home, Users, MessageSquare, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { NotificationIcon } from '@/components/notifications/NotificationIcon';
+import { DarkModeToggle } from "./DarkModeToggle";
 
 interface NavbarProps {
   activeTab: string;
@@ -36,11 +37,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
   };
 
   return (
-    <nav className="bg-white shadow-lg border-b sticky top-0 z-50">
+    <nav className="bg-white dark:bg-background shadow-lg border-b sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-bold text-blue-600">SocialConnect</h1>
+            <h1 className="text-2xl font-bold text-blue-600 dark:text-primary">
+              SocialConnect
+            </h1>
             <div className="hidden md:flex space-x-4">
               {navItems.slice(0, 3).map((item) => (
                 <Button
@@ -53,7 +56,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
                   <span>{item.label}</span>
                 </Button>
               ))}
-              {/* Add notifications icon here */}
               <NotificationIcon
                 onClick={() => {
                   navigate('/notifications');
@@ -73,6 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <DarkModeToggle />
             <div className="flex items-center space-x-2">
               <Avatar className="w-8 h-8">
                 <AvatarImage src={profile?.avatar} />
