@@ -53,14 +53,14 @@ const getAllProfiles = async (excludeId: string) => {
   return data || [];
 };
 
-// Create conversation
+// Create conversation (group)
 const createGroupConversation = async ({
-  title, participantIds, isGroup
-}: { title: string; participantIds: string[]; isGroup: boolean }) => {
+  title, participantIds, isGroup, creatorId
+}: { title: string; participantIds: string[]; isGroup: boolean; creatorId: string }) => {
   const { data: conversation, error } = await supabase
     .from('conversations')
     .insert([
-      { title, is_group: isGroup }
+      { title, is_group: isGroup, creator_id: creatorId }
     ])
     .select()
     .single();
@@ -118,10 +118,10 @@ const getOrCreateDirectConversation = async ({
       return { id: conv.id };
     }
   }
-  // 2. Otherwise create direct conversation
+  // 2. Otherwise create direct conversation, setting creator_id
   const { data: conversation, error: cError } = await supabase
     .from('conversations')
-    .insert([{ title: null, is_group: false }])
+    .insert([{ title: null, is_group: false, creator_id: userId }])
     .select()
     .single();
   if (cError) throw cError;
@@ -147,7 +147,8 @@ export const useConversations = () => {
     getAllProfiles(user!.id);
 
   const createConversationMutation = useMutation({
-    mutationFn: createGroupConversation,
+    mutationFn: (args: { title: string; participantIds: string[]; isGroup: boolean }) =>
+      createGroupConversation({ ...args, creatorId: user!.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
     }
