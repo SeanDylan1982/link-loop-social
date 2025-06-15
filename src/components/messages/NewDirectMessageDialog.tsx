@@ -61,8 +61,14 @@ export const NewDirectMessageDialog: React.FC<Props> = ({
         onOpenChange(false);
         afterNavigate(conv.id);
       }
-    } catch (e) {
-      window.alert("Could not start direct message. Try again.");
+    } catch (e: any) {
+      // Show error in toast and log to console
+      console.error("getOrCreateDM failed:", e);
+      toast({
+        title: "Could not start direct message.",
+        description: e?.message || "An error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setCreating(false);
     }
