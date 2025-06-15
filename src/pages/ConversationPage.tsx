@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConversation } from '@/hooks/useConversation';
@@ -10,13 +9,34 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 const ConversationPage: React.FC = () => {
-    const { userId: otherUserId } = useParams<{ userId: string }>();
+    const { userId, conversationId } = useParams<{ userId?: string, conversationId?: string }>();
     const { user } = useSupabaseAuth();
     const navigate = useNavigate();
-    const { profile: otherUserProfile, loading: profileLoading } = useUserProfile(otherUserId);
-    const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(otherUserId);
+    const [conv, setConv] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+    const convId = conversationId || undefined;
+
+    React.useEffect(() => {
+      (async () => {
+        if (convId) {
+          setLoading(true);
+          const { data, error } = await supabase
+            .from("conversations")
+            .select("*, participants:conversation_participants (user_id, profiles:profiles(id,username,avatar))")
+            .eq("id", convId)
+            .maybeSingle();
+          setConv(data);
+          setLoading(false);
+        }
+      })();
+    }, [convId]);
+
+    const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(
+      convId ?? userId // For direct/legacy flow
+    );
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,34 +56,51 @@ const ConversationPage: React.FC = () => {
         navigate(`/?tab=${tab}`);
     };
     
-    const loading = profileLoading || messagesLoading;
+    const loadingAny = loading || messagesLoading;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar activeTab={'messages'} onTabChange={handleNavChange} />
             <div className="container mx-auto px-4 py-6 flex-grow flex flex-col">
-                {loading ? (
+                {loadingAny ? (
                     <div className="text-center py-8 text-gray-500">Loading conversation...</div>
-                ) : !otherUserProfile ? (
-                    <div className="text-center py-8 text-red-500">User not found.</div>
+                ) : !conv ? (
+                    <div className="text-center py-8 text-red-500">Conversation not found.</div>
                 ) : (
                 <Card className="flex-grow flex flex-col">
                     <CardHeader className="flex flex-row items-center justify-between border-b p-4">
                         <div className="flex items-center space-x-4">
-                             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
                                 Back
                             </Button>
-                            <Avatar>
-                                <AvatarImage src={otherUserProfile.avatar || undefined} />
-                                <AvatarFallback>{otherUserProfile.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <CardTitle className="text-lg">{otherUserProfile.username}</CardTitle>
-                            </div>
+                            {/* Show avatar/title for groups, username(s) for dm */}
+                            {conv.is_group ? (
+                              <>
+                                <Avatar>
+                                  <AvatarFallback>{conv.title?.slice(0,2).toUpperCase() || "G"}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <CardTitle className="text-lg">{conv.title}</CardTitle>
+                                  <div className="text-xs text-muted-foreground">
+                                    {conv.participants.map((p: any) => p.profiles?.username).filter(Boolean).join(", ")}
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <Avatar>
+                                  <AvatarImage src={conv.participants?.[0]?.profiles?.avatar || undefined} />
+                                  <AvatarFallback>{conv.participants?.[0]?.profiles?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <CardTitle className="text-lg">{conv.participants?.[0]?.profiles?.username ?? "User"}</CardTitle>
+                                </div>
+                              </>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
-                        {messages.map((message) => (
+                        {messages.map((message: any) => (
                             <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs lg:max-w-md p-3 rounded-lg ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                     <p>{message.content}</p>
@@ -82,8 +119,8 @@ const ConversationPage: React.FC = () => {
                                 autoComplete="off"
                             />
                             <Button type="submit" disabled={isSending} size="icon">
-                                <Send />
                                 <span className="sr-only">Send</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
                             </Button>
                         </form>
                     </div>
@@ -95,4 +132,3 @@ const ConversationPage: React.FC = () => {
 };
 
 export default ConversationPage;
-

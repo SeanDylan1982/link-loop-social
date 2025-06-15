@@ -10,6 +10,9 @@ import { MessagesList } from '@/components/messages/MessagesList';
 import { usePosts } from '@/hooks/usePosts';
 import { useSearchParams } from 'react-router-dom';
 import { SupabaseSearch } from '@/components/search/SupabaseSearch';
+import { ConversationsList } from "@/components/messages/ConversationsList";
+import { CreateGroupConversation } from "@/components/messages/CreateGroupConversation";
+import { useNavigate } from "react-router-dom";
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
@@ -17,6 +20,8 @@ const MainApp: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -67,7 +72,20 @@ const MainApp: React.FC = () => {
 
         {activeTab === 'profile' && <UserProfile />}
         {activeTab === 'friends' && <SupabaseFriendsList />}
-        {activeTab === 'messages' && <MessagesList />}
+        {activeTab === 'messages' && (
+          <div className="max-w-2xl mx-auto">
+            <ConversationsList
+              onCreateGroup={() => setShowCreateGroup(true)}
+            />
+            <CreateGroupConversation
+              open={showCreateGroup}
+              onOpenChange={setShowCreateGroup}
+              afterCreated={(conversationId) => {
+                navigate(`/conversation/${conversationId}`);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
