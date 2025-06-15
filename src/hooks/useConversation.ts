@@ -7,47 +7,53 @@ import { useEffect } from 'react';
 
 type Message = Tables<'messages'>;
 
-const fetchConversation = async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
+// Fetch messages by conversation id
+const fetchConversation = async (conversationId: string): Promise<Message[]> => {
   const { data, error } = await supabase
     .from('messages')
     .select('*')
-    .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),(sender_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`)
+    .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
   return data || [];
 };
 
-const sendMessage = async (currentUserId: string, receiverId: string, content: string) => {
+// Send a message in a conversation
+const sendMessage = async (currentUserId: string, conversationId: string, content: string) => {
   const { error } = await supabase
     .from('messages')
-    .insert({ sender_id: currentUserId, receiver_id: receiverId, content });
+    .insert({ 
+      sender_id: currentUserId, 
+      conversation_id: conversationId, 
+      content 
+    });
   
   if (error) throw error;
 };
 
-export const useConversation = (otherUserId: string | undefined) => {
+export const useConversation = (conversationId: string | undefined) => {
     const { user } = useSupabaseAuth();
     const queryClient = useQueryClient();
-    const queryKey = ['conversation', user?.id, otherUserId];
+    const queryKey = ['conversation', conversationId];
 
     const { data: messages, isLoading } = useQuery({
         queryKey: queryKey,
-        queryFn: () => fetchConversation(user!.id, otherUserId!),
-        enabled: !!user && !!otherUserId,
+        queryFn: () => fetchConversation(conversationId!),
+        enabled: !!user && !!conversationId,
     });
 
     const sendMessageMutation = useMutation({
-        mutationFn: (content: string) => sendMessage(user!.id, otherUserId!, content),
+        mutationFn: (content: string) => sendMessage(user!.id, conversationId!, content),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey });
         },
     });
     
     useEffect(() => {
-        if (!user || !otherUserId) return;
+        if (!user || !conversationId) return;
 
-        const channelName = `conversation-${[user.id, otherUserId].sort().join('-')}`;
+        const channelName = `conversation-${conversationId}`;
         const channel = supabase
             .channel(channelName)
             .on(
@@ -56,12 +62,10 @@ export const useConversation = (otherUserId: string | undefined) => {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
-                    filter: `receiver_id=eq.${user.id}`,
+                    filter: `conversation_id=eq.${conversationId}`,
                 },
                 (payload) => {
-                    if (payload.new.sender_id === otherUserId) {
-                        queryClient.invalidateQueries({ queryKey });
-                    }
+                    queryClient.invalidateQueries({ queryKey });
                 }
             )
             .subscribe();
@@ -69,7 +73,7 @@ export const useConversation = (otherUserId: string | undefined) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [user, otherUserId, queryClient, queryKey]);
+    }, [user, conversationId, queryClient, queryKey]);
 
     return {
         messages: messages ?? [],
@@ -78,4 +82,3 @@ export const useConversation = (otherUserId: string | undefined) => {
         isSending: sendMessageMutation.isPending,
     };
 };
-
