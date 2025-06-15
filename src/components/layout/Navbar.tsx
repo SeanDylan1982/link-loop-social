@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -6,6 +5,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Home, Users, MessageSquare, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { NotificationIcon } from '@/components/notifications/NotificationIcon';
 
 interface NavbarProps {
   activeTab: string;
@@ -20,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
     { id: 'home', label: 'Home', icon: Home },
     { id: 'friends', label: 'Friends', icon: Users },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
+    // Notifications intentionally handled separately for special UI.
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
@@ -41,7 +42,24 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
           <div className="flex items-center space-x-8">
             <h1 className="text-2xl font-bold text-blue-600">SocialConnect</h1>
             <div className="hidden md:flex space-x-4">
-              {navItems.map((item) => (
+              {navItems.slice(0, 3).map((item) => (
+                <Button
+                  key={item.id}
+                  variant={activeTab === item.id ? "default" : "ghost"}
+                  onClick={() => onTabChange(item.id)}
+                  className="flex items-center space-x-2"
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </Button>
+              ))}
+              {/* Add notifications icon here */}
+              <NotificationIcon
+                onClick={() => {
+                  navigate('/notifications');
+                }}
+              />
+              {navItems.slice(3).map((item) => (
                 <Button
                   key={item.id}
                   variant={activeTab === item.id ? "default" : "ghost"}
@@ -54,7 +72,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
               ))}
             </div>
           </div>
-          
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <Avatar className="w-8 h-8">
@@ -68,10 +85,25 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
             </Button>
           </div>
         </div>
-        
+
         {/* Mobile Navigation */}
         <div className="md:hidden flex justify-around py-2 border-t">
-          {navItems.map((item) => (
+          {navItems.slice(0, 3).map((item) => (
+            <Button
+              key={item.id}
+              variant={activeTab === item.id ? "default" : "ghost"}
+              onClick={() => onTabChange(item.id)}
+              size="sm"
+            >
+              <item.icon size={16} />
+            </Button>
+          ))}
+          <NotificationIcon
+            onClick={() => {
+              navigate('/notifications');
+            }}
+          />
+          {navItems.slice(3).map((item) => (
             <Button
               key={item.id}
               variant={activeTab === item.id ? "default" : "ghost"}

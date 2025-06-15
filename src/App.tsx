@@ -9,6 +9,7 @@ import { SupabaseAuthProvider } from "./hooks/useSupabaseAuth";
 import UserProfilePage from "./pages/UserProfilePage";
 import ConversationPage from "./pages/ConversationPage";
 import PostPage from "./pages/PostPage";
+import NotificationsPage from './pages/NotificationsPage';
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<SupabaseIndex />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile/:userId" element={<UserProfilePage />} />
             <Route path="/post/:postId" element={<PostPage />} />
             <Route path="/conversation/:userId" element={<ConversationPage />} />
