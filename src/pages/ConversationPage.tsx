@@ -1,14 +1,13 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConversation } from '@/hooks/useConversation';
-import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 
 const ConversationPage: React.FC = () => {
@@ -29,8 +28,10 @@ const ConversationPage: React.FC = () => {
             .select("*, participants:conversation_participants (user_id, profiles:profiles(id,username,avatar))")
             .eq("id", convId)
             .maybeSingle();
+          if (error) console.error("Error loading conversation detail", error);
           setConv(data);
           setLoading(false);
+          console.log("[ConversationPage] Loaded conversation:", data);
         }
       })();
     }, [convId]);
@@ -42,17 +43,23 @@ const ConversationPage: React.FC = () => {
       const participantProfiles = conv.participants as any[];
       const other = participantProfiles?.find((p) => p.profiles?.id && p.profiles.id !== user.id);
       receiverId = other?.profiles?.id;
+      // Debug
+      console.log("[ConversationPage] receiverId for DM:", receiverId);
     }
 
     const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(
-      convId ?? userId, // For direct/legacy flow this stays
-      receiverId // This is undefined for group chats, set for DMs
+      convId ?? userId,
+      receiverId
     );
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    useEffect(() => {
+      console.log("[ConversationPage] messages array", messages);
     }, [messages]);
     
     const handleSendMessage = (e: React.FormEvent) => {
@@ -111,14 +118,18 @@ const ConversationPage: React.FC = () => {
                         </div>
                     </CardHeader>
                     <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
-                        {messages.map((message: any) => (
+                        {messages.length === 0 ? (
+                          <div className="text-center text-gray-400 py-6">No messages yet. Say hello!</div>
+                        ) : (
+                          messages.map((message: any) => (
                             <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs lg:max-w-md p-3 rounded-lg ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                     <p>{message.content}</p>
                                     <p className="text-xs text-right opacity-70 mt-1">{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                             </div>
-                        ))}
+                          ))
+                        )}
                         <div ref={messagesEndRef} />
                     </CardContent>
                     <div className="border-t p-4 bg-background">
@@ -128,8 +139,9 @@ const ConversationPage: React.FC = () => {
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 placeholder="Type a message..."
                                 autoComplete="off"
+                                disabled={!conv}
                             />
-                            <Button type="submit" disabled={isSending} size="icon">
+                            <Button type="submit" disabled={isSending || !conv} size="icon">
                                 <span className="sr-only">Send</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
                             </Button>
