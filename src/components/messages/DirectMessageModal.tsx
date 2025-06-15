@@ -8,16 +8,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface DirectMessageModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  friend: {
-    id: string;
-    username: string;
-    avatar: string | null;
-  } | null;
-}
+import { useNotifications } from "@/hooks/useNotifications";
 
 export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
   open,
@@ -30,6 +21,7 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
   const { toast } = useToast();
   const { user } = useSupabaseAuth();
   const queryClient = useQueryClient();
+  const { insertNotification } = useNotifications();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +44,14 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
 
         // Invalidate conversations query for up-to-date conversations list
         queryClient.invalidateQueries({ queryKey: ["conversations", user.id] });
+
+        // Create notification for the receiver
+        insertNotification.mutate({
+          userId: friend.id,
+          type: "message",
+          relatedId: conv.id,
+          content: `New message from ${user.user_metadata?.username || user.email}`,
+        });
 
         toast({ title: "Message sent!", description: `Message delivered to ${friend.username}` });
         setMessage("");

@@ -234,6 +234,36 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          read: boolean
+          related_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          read?: boolean
+          related_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          read?: boolean
+          related_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           content: string
