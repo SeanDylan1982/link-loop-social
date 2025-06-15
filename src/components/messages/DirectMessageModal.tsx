@@ -6,7 +6,8 @@ import { Input } from "../ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useConversations } from "@/hooks/useConversations";
 import { useToast } from "@/hooks/use-toast";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth"; // new import
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DirectMessageModalProps {
   open: boolean;
@@ -27,7 +28,8 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
-  const { user } = useSupabaseAuth(); // get authenticated user
+  const { user } = useSupabaseAuth();
+  const queryClient = useQueryClient();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +44,14 @@ export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
         const { supabase } = await import("@/integrations/supabase/client");
         const { error } = await supabase.from("messages").insert({
           conversation_id: conv.id,
-          sender_id: user.id, // set sender_id to authenticated user id
+          sender_id: user.id,
           receiver_id: friend.id,
           content: message.trim(),
         });
         if (error) throw error;
+
+        // Invalidate conversations query for up-to-date conversations list
+        queryClient.invalidateQueries({ queryKey: ["conversations", user.id] });
 
         toast({ title: "Message sent!", description: `Message delivered to ${friend.username}` });
         setMessage("");
