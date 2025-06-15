@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
@@ -5,6 +6,7 @@ import { Input } from "../ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useConversations } from "@/hooks/useConversations";
 import { useToast } from "@/hooks/use-toast";
+import { DirectMessageModal } from "./DirectMessageModal";
 
 interface Props {
   open: boolean;
@@ -23,6 +25,8 @@ export const NewDirectMessageDialog: React.FC<Props> = ({
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dmModalOpen, setDMModalOpen] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const { toast } = useToast();
 
   const fetchFriends = async () => {
@@ -53,83 +57,80 @@ export const NewDirectMessageDialog: React.FC<Props> = ({
       f.username?.toLowerCase().includes(search.trim().toLowerCase())
   );
 
-  const handleSelectFriend = async (id: string) => {
-    setCreating(true);
-    try {
-      const conv = await getOrCreateDM(id);
-      if (conv?.id) {
-        onOpenChange(false);
-        afterNavigate(conv.id);
-      }
-    } catch (e: any) {
-      // Show error in toast and log to console
-      console.error("getOrCreateDM failed:", e);
-      toast({
-        title: "Could not start direct message.",
-        description: e?.message || "An error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setCreating(false);
-    }
+  const handleSelectFriend = (friend: any) => {
+    setSelectedFriend(friend);
+    setDMModalOpen(true);
+  };
+
+  const handleDMClose = () => {
+    setDMModalOpen(false);
+    setSelectedFriend(null);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New Message</DialogTitle>
-        </DialogHeader>
-        {loading ? (
-          <div className="py-4 text-gray-500">Loading friends...</div>
-        ) : error ? (
-          <div className="flex flex-col items-center gap-4 py-6 text-red-500">
-            <div>{error}</div>
-            <Button onClick={fetchFriends} disabled={loading || creating} size="sm">
-              Retry
-            </Button>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
-                Cancel
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Message</DialogTitle>
+          </DialogHeader>
+          {loading ? (
+            <div className="py-4 text-gray-500">Loading friends...</div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-4 py-6 text-red-500">
+              <div>{error}</div>
+              <Button onClick={fetchFriends} disabled={loading || creating} size="sm">
+                Retry
               </Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Input
-              placeholder="Search friends"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              disabled={creating}
-            />
-            <div className="max-h-56 overflow-y-auto flex flex-col gap-2">
-              {filteredFriends.length === 0 ? (
-                <div className="text-gray-500 py-8 text-center">No friends found.</div>
-              ) : (
-                filteredFriends.map(friend => (
-                  <button
-                    key={friend.id}
-                    className="flex items-center gap-3 px-2 py-2 hover:bg-muted rounded w-full text-left"
-                    onClick={() => handleSelectFriend(friend.id)}
-                    disabled={creating}
-                  >
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={friend.avatar || undefined} />
-                      <AvatarFallback>{friend.username?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{friend.username}</span>
-                  </button>
-                ))
-              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
+                  Cancel
+                </Button>
+              </DialogFooter>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
-                Cancel
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          ) : (
+            <div className="space-y-4">
+              <Input
+                placeholder="Search friends"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                disabled={creating}
+              />
+              <div className="max-h-56 overflow-y-auto flex flex-col gap-2">
+                {filteredFriends.length === 0 ? (
+                  <div className="text-gray-500 py-8 text-center">No friends found.</div>
+                ) : (
+                  filteredFriends.map(friend => (
+                    <button
+                      key={friend.id}
+                      className="flex items-center gap-3 px-2 py-2 hover:bg-muted rounded w-full text-left"
+                      onClick={() => handleSelectFriend(friend)}
+                      disabled={creating}
+                    >
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={friend.avatar || undefined} />
+                        <AvatarFallback>{friend.username?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{friend.username}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <DirectMessageModal
+        open={dmModalOpen}
+        onOpenChange={handleDMClose}
+        friend={selectedFriend}
+      />
+    </>
   );
 };
+
