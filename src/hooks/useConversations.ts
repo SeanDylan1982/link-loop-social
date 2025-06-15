@@ -8,8 +8,17 @@ export type ConversationParticipant = Tables<'conversation_participants'>;
 
 // Fetch all conversations for a user
 const getUserConversations = async (userId: string) => {
-  // Fetch conversations where user is a participant, including participants and their profile.
-  // Participants profile: join via conversation_participants and profiles
+  // Fetch list of conversation IDs for this user as participant
+  const { data: participationRows, error: partErr } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id')
+    .eq('user_id', userId);
+
+  if (partErr) throw partErr;
+  const ids = participationRows?.map(cp => cp.conversation_id) || [];
+  if (ids.length === 0) return []; // <-- fix: don't query with an empty id list
+
+  // Now fetch conversation details if there are any
   const { data, error } = await supabase
     .from('conversations')
     .select(`
@@ -21,14 +30,7 @@ const getUserConversations = async (userId: string) => {
         )
       )
     `)
-    .in('id', 
-      (
-        await supabase
-          .from('conversation_participants')
-          .select('conversation_id')
-          .eq('user_id', userId)
-      ).data?.map(cp => cp.conversation_id) || []
-    )
+    .in('id', ids)
     .order('updated_at', { ascending: false });
 
   if (error) throw error;
