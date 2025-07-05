@@ -1,6 +1,14 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Home, Users, MessageSquare, User, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -61,31 +69,32 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
                   navigate('/notifications');
                 }}
               />
-              {navItems.slice(3).map((item) => (
-                <Button
-                  key={item.id}
-                  variant={activeTab === item.id ? "default" : "ghost"}
-                  onClick={() => onTabChange(item.id)}
-                  className="flex items-center space-x-2"
-                >
-                  <item.icon size={18} />
-                  <span>{item.label}</span>
-                </Button>
-              ))}
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <DarkModeToggle />
-            <div className="flex items-center space-x-2">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={profile?.avatar} />
-                <AvatarFallback>{profile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="hidden sm:block text-sm font-medium">{profile?.username}</span>
-            </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut size={16} className="mr-1" /> Logout
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2 p-2">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={profile?.avatar} />
+                    <AvatarFallback>{profile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="hidden sm:block text-sm font-medium">{profile?.username}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => onTabChange('profile')}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
