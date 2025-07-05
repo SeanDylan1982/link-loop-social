@@ -1,106 +1,207 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Send } from 'lucide-react';
 
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useConversations } from "@/hooks/useConversations";
-import { useToast } from "@/hooks/use-toast";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { useQueryClient } from "@tanstack/react-query";
-import { useNotifications } from "@/hooks/useNotifications";
+interface DirectMessageModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  recipientId?: string;
+}
 
-export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({
-  open,
-  onOpenChange,
-  friend,
-}) => {
-  const { getOrCreateDM } = useConversations();
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const { toast } = useToast();
-  const { user } = useSupabaseAuth();
-  const queryClient = useQueryClient();
-  const { insertNotification } = useNotifications();
+interface Message {
+  id: string;
+  content: string;
+  sender_id: string;
+  receiver_id: string;
+  created_at: string;
+  read: boolean;
+  profiles?: {
+    username: string;
+    avatar?: string;
+  };
+}
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!friend || !message.trim() || !user) return;
+export const DirectMessageModal: React.FC<DirectMessageModalProps> = ({ isOpen, onClose, recipientId }) => {
+  const [messageText, setMessageText] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const { user, profile } = useSupabaseAuth();
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    setSending(true);
+  useEffect(() => {
+    if (isOpen && recipientId) {
+      fetchMessages(recipientId);
+    }
+  }, [isOpen, recipientId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [messages, isOpen]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const fetchMessages = async (recipientId: string) => {
+    setLoading(true);
     try {
-      // Get (or create) the conversation
-      const conv = await getOrCreateDM(friend.id);
-      if (conv?.id) {
-        // Insert the first message into the conversation
-        const { supabase } = await import("@/integrations/supabase/client");
-        const { error } = await supabase.from("messages").insert({
-          conversation_id: conv.id,
-          sender_id: user.id,
-          receiver_id: friend.id,
-          content: message.trim(),
-        });
-        if (error) throw error;
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          profiles:sender_id (
+            username,
+            avatar
+          )
+        `)
+        .or(`and(sender_id.eq.${user?.id}, receiver_id.eq.${recipientId}),and(sender_id.eq.${recipientId}, receiver_id.eq.${user?.id})`)
+        .order('created_at', { ascending: true });
 
-        // Invalidate conversations query for up-to-date conversations list
-        queryClient.invalidateQueries({ queryKey: ["conversations", user.id] });
-
-        // Create notification for the receiver
-        insertNotification.mutate({
-          userId: friend.id,
-          type: "message",
-          relatedId: conv.id,
-          content: `New message from ${user.user_metadata?.username || user.email}`,
-        });
-
-        toast({ title: "Message sent!", description: `Message delivered to ${friend.username}` });
-        setMessage("");
-        onOpenChange(false);
+      if (error) {
+        console.error('Error fetching messages:', error);
+        toast({ title: "Error", description: "Failed to load messages.", variant: "destructive" });
+        return;
       }
-    } catch (e: any) {
-      console.error("Failed to send message:", e);
-      toast({
-        title: "Error sending message",
-        description: e?.message || "Something went wrong",
-        variant: "destructive",
-      });
+
+      setMessages(data || []);
+      // Mark messages as read
+      markMessagesAsRead(recipientId, data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast({ title: "Error", description: "Failed to load messages.", variant: "destructive" });
     } finally {
-      setSending(false);
+      setLoading(false);
     }
   };
 
-  if (!friend) return null;
+  const markMessagesAsRead = async (recipientId: string, messages: Message[]) => {
+    if (!user) return;
+
+    // Filter out messages that are already read or sent by the current user
+    const unreadMessages = messages.filter(msg => !msg.read && msg.receiver_id === user.id);
+
+    if (unreadMessages.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ read: true })
+        .in('id', unreadMessages.map(msg => msg.id));
+
+      if (error) {
+        console.error('Error marking messages as read:', error);
+        toast({ title: "Error", description: "Failed to update message status.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      toast({ title: "Error", description: "Failed to update message status.", variant: "destructive" });
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!messageText.trim() || !user || !recipientId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([{
+          content: messageText,
+          sender_id: user.id,
+          receiver_id: recipientId,
+          read: false,
+        }])
+        .select(`
+          *,
+          profiles:sender_id (
+            username,
+            avatar
+          )
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error sending message:', error);
+        toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+        return;
+      }
+
+      setMessages([...messages, data]);
+      setMessageText('');
+      scrollToBottom();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[475px]">
         <DialogHeader>
-          <DialogTitle>New message to</DialogTitle>
+          <DialogTitle>Direct Message</DialogTitle>
         </DialogHeader>
-        <div className="flex items-center gap-3 my-1">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={friend.avatar || undefined} />
-            <AvatarFallback>{friend.username?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
-          </Avatar>
-          <span className="font-semibold">{friend.username}</span>
-        </div>
-        <form className="space-y-2" onSubmit={handleSend}>
+        <ScrollArea className="h-[350px] w-full pr-2">
+          <div className="flex flex-col space-y-2 p-2">
+            {loading ? (
+              <div>Loading messages...</div>
+            ) : (
+              messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex flex-col ${message.sender_id === user?.id ? 'items-end' : 'items-start'}`}
+                >
+                  <div className="flex items-center space-x-2">
+                    {message.sender_id !== user?.id && (
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={message.profiles?.avatar} />
+                        <AvatarFallback>{message.profiles?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className={`rounded-lg px-3 py-2 text-sm ${message.sender_id === user?.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100'}`}>
+                      {message.content}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {new Date(message.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+        <DialogFooter className="mt-4">
           <Input
             placeholder="Type your message..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            disabled={sending}
-            autoFocus
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                sendMessage();
+              }
+            }}
+            className="mr-2"
           />
-          <DialogFooter>
-            <Button type="submit" disabled={sending || !message.trim()}>
-              Send
-            </Button>
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </form>
+          <Button onClick={sendMessage}><Send className="mr-2" size={16} /> Send</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

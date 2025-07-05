@@ -15,6 +15,12 @@ import { ConversationsList } from "@/components/messages/ConversationsList";
 import { CreateGroupConversation } from "@/components/messages/CreateGroupConversation";
 import { useNavigate } from "react-router-dom";
 import { FeedFilters, FeedFilterType, FeedSortType } from '@/components/feed/FeedFilters';
+import { TopicsSidebar } from '@/components/topics/TopicsSidebar';
+import { TopicCreatePost } from '@/components/topics/TopicCreatePost';
+import { TopicPostCard } from '@/components/topics/TopicPostCard';
+import { useTopicPosts } from '@/hooks/useTopicPosts';
+import { useTopics } from '@/hooks/useTopics';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
@@ -23,19 +29,21 @@ const MainApp: React.FC = () => {
   const initialTab = searchParams.get('tab') || 'home';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [selectedTopicId, setSelectedTopicId] = useState<string>();
   const navigate = useNavigate();
+
+  const { topics } = useTopics();
+  const { posts: topicPosts, createTopicPost, updateTopicPost } = useTopicPosts(selectedTopicId);
 
   // Filtering & Sorting State
   const [filter, setFilter] = useState<FeedFilterType>("all");
   const [sort, setSort] = useState<FeedSortType>("recent");
 
-  // Get list of friends' user IDs
-  // We'll use posts[].profiles?.id and profile?.id for self. For friends, assume profile has friends array (otherwise skip Friends filtering)
+  // Get list of friends' user IDs (simplified - remove friends array dependency)
   const friendsIds: string[] = useMemo(() => {
-    // Try to get friend ids from the profile.friends array (may need improvement based on how SupabaseFriendsList and profile work)
-    if (!profile || !profile.friends) return [];
-    return profile.friends.map((f: any) => typeof f === "string" ? f : f.id);
-  }, [profile]);
+    // For now, return empty array - friends functionality can be enhanced later
+    return [];
+  }, []);
 
   // Filter and sort posts for feed
   const filteredSortedPosts = useMemo(() => {
@@ -68,6 +76,8 @@ const MainApp: React.FC = () => {
     return filtered;
   }, [posts, filter, sort, friendsIds]);
 
+  const selectedTopic = topics.find(t => t.id === selectedTopicId);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -84,38 +94,84 @@ const MainApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-background">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
-      {/* Add search bar at the top */}
       <SupabaseSearch />
       <div className="container mx-auto px-4 py-6">
         {activeTab === 'home' && (
-          <div className="max-w-2xl mx-auto">
-            <SupabaseCreatePost onPostCreated={createPost} />
-            {/* Filter and Sort controls */}
-            <FeedFilters
-              filter={filter}
-              onFilterChange={setFilter}
-              sort={sort}
-              onSortChange={setSort}
+          <div className="flex gap-6">
+            <TopicsSidebar
+              selectedTopicId={selectedTopicId}
+              onTopicSelect={setSelectedTopicId}
             />
-            <div className="space-y-4">
-              {filteredSortedPosts.length > 0 ? (
-                filteredSortedPosts.map((post) => (
-                  <SupabasePostCard
-                    key={post.id}
-                    post={post}
-                    onPostUpdate={updatePost}
-                  />
-                ))
+            <div className="flex-1 max-w-2xl">
+              {selectedTopicId ? (
+                <div>
+                  {selectedTopic && (
+                    <Card className="mb-6">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          # {selectedTopic.title}
+                        </CardTitle>
+                        {selectedTopic.description && (
+                          <p className="text-muted-foreground">{selectedTopic.description}</p>
+                        )}
+                      </CardHeader>
+                    </Card>
+                  )}
+                  <TopicCreatePost onPostCreated={createTopicPost} />
+                  <div className="space-y-4">
+                    {topicPosts.length > 0 ? (
+                      topicPosts.map((post) => (
+                        <TopicPostCard
+                          key={post.id}
+                          post={post}
+                          onPostUpdate={updateTopicPost}
+                        />
+                      ))
+                    ) : (
+                      <Card>
+                        <CardContent className="text-center py-12">
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                            No posts yet in this topic
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            Be the first to start the conversation!
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
               ) : (
-                <div className="text-center py-12">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Welcome to SocialConnect!
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Start by creating your first post or connecting with friends.
-                  </p>
+                <div>
+                  <SupabaseCreatePost onPostCreated={createPost} />
+                  <FeedFilters
+                    filter={filter}
+                    onFilterChange={setFilter}
+                    sort={sort}
+                    onSortChange={setSort}
+                  />
+                  <div className="space-y-4">
+                    {filteredSortedPosts.length > 0 ? (
+                      filteredSortedPosts.map((post) => (
+                        <SupabasePostCard
+                          key={post.id}
+                          post={post}
+                          onPostUpdate={updatePost}
+                        />
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                          Welcome to SocialConnect!
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                          Start by creating your first post or selecting a topic to join the conversation.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
