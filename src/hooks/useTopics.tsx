@@ -14,6 +14,8 @@ export interface Topic {
   updated_at: string;
   post_count?: number;
   member_count?: number;
+  last_post_date?: string;
+  is_member?: boolean;
 }
 
 export interface TopicPost {
@@ -53,11 +55,13 @@ export const useTopics = () => {
       // Get additional stats for each topic
       const topicsWithStats = await Promise.all(
         (data || []).map(async (topic) => {
-          // Get post count
-          const { count: postCount } = await supabase
+          // Get post count and last post date
+          const { data: posts, count: postCount } = await supabase
             .from('topic_posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('topic_id', topic.id);
+            .select('created_at', { count: 'exact' })
+            .eq('topic_id', topic.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
           // Get member count
           const { count: memberCount } = await supabase
@@ -65,10 +69,25 @@ export const useTopics = () => {
             .select('*', { count: 'exact', head: true })
             .eq('topic_id', topic.id);
 
+          // Check if current user is a member
+          let isMember = false;
+          if (user) {
+            const { data: membership } = await supabase
+              .from('topic_memberships')
+              .select('id')
+              .eq('topic_id', topic.id)
+              .eq('user_id', user.id)
+              .single();
+            
+            isMember = !!membership;
+          }
+
           return {
             ...topic,
             post_count: postCount || 0,
-            member_count: memberCount || 0
+            member_count: memberCount || 0,
+            last_post_date: posts && posts.length > 0 ? posts[0].created_at : null,
+            is_member: isMember
           };
         })
       );
@@ -135,7 +154,7 @@ export const useTopics = () => {
           user_id: user.id
         }]);
 
-      const newTopic = { ...data, post_count: 0, member_count: 1 };
+      const newTopic = { ...data, post_count: 0, member_count: 1, is_member: true };
       setTopics([newTopic, ...topics]);
       toast({ title: "Topic created successfully!" });
       return newTopic;
@@ -146,7 +165,10 @@ export const useTopics = () => {
   };
 
   const joinTopic = async (topicId: string) => {
-    if (!user) return;
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to join a topic", variant: "destructive" });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -161,7 +183,7 @@ export const useTopics = () => {
       }
 
       toast({ title: "Joined topic successfully!" });
-      fetchTopics(); // Refresh to update member counts
+      fetchTopics(); // Refresh to update member counts and membership status
     } catch (error) {
       console.error('Error joining topic:', error);
       toast({ title: "Error", description: "Failed to join topic", variant: "destructive" });
@@ -170,7 +192,7 @@ export const useTopics = () => {
 
   useEffect(() => {
     fetchTopics();
-  }, []);
+  }, [user]);
 
   return {
     topics: sortedTopics,

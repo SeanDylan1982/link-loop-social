@@ -22,6 +22,7 @@ import { useTopics } from '@/hooks/useTopics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { Users, MessageSquare } from 'lucide-react';
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
@@ -87,6 +88,12 @@ const MainApp: React.FC = () => {
     return createTopicPost(content, imageFile, refetchTopics);
   };
 
+  const handleJoinTopic = async () => {
+    if (selectedTopicId) {
+      await joinTopic(selectedTopicId);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -119,22 +126,39 @@ const MainApp: React.FC = () => {
                   {selectedTopic && (
                     <Card className="mb-6">
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleBackToFeed}
-                            className="p-2"
-                          >
-                            <ArrowLeft size={16} />
-                          </Button>
-                          <div>
-                            # {selectedTopic.title}
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleBackToFeed}
+                              className="p-2"
+                            >
+                              <ArrowLeft size={16} />
+                            </Button>
+                            <div>
+                              # {selectedTopic.title}
+                            </div>
                           </div>
+                          {!selectedTopic.is_member && (
+                            <Button onClick={handleJoinTopic} size="sm">
+                              Join Topic
+                            </Button>
+                          )}
                         </CardTitle>
                         {selectedTopic.description && (
                           <p className="text-muted-foreground ml-11">{selectedTopic.description}</p>
                         )}
+                        <div className="flex items-center gap-4 ml-11 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Users size={14} />
+                            <span>{selectedTopic.member_count || 0} members</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <MessageSquare size={14} />
+                            <span>{selectedTopic.post_count || 0} posts</span>
+                          </div>
+                        </div>
                       </CardHeader>
                     </Card>
                   )}
