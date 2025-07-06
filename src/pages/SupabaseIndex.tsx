@@ -21,6 +21,8 @@ import { TopicPostCard } from '@/components/topics/TopicPostCard';
 import { useTopicPosts } from '@/hooks/useTopicPosts';
 import { useTopics } from '@/hooks/useTopics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
@@ -78,6 +80,10 @@ const MainApp: React.FC = () => {
 
   const selectedTopic = topics.find(t => t.id === selectedTopicId);
 
+  const handleBackToFeed = () => {
+    setSelectedTopicId(undefined);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -110,11 +116,21 @@ const MainApp: React.FC = () => {
                   {selectedTopic && (
                     <Card className="mb-6">
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          # {selectedTopic.title}
+                        <CardTitle className="flex items-center gap-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleBackToFeed}
+                            className="p-2"
+                          >
+                            <ArrowLeft size={16} />
+                          </Button>
+                          <div>
+                            # {selectedTopic.title}
+                          </div>
                         </CardTitle>
                         {selectedTopic.description && (
-                          <p className="text-muted-foreground">{selectedTopic.description}</p>
+                          <p className="text-muted-foreground ml-11">{selectedTopic.description}</p>
                         )}
                       </CardHeader>
                     </Card>
