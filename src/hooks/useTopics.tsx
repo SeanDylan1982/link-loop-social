@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { toast } from '@/hooks/use-toast';
@@ -12,6 +12,8 @@ export interface Topic {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  post_count?: number;
+  member_count?: number;
 }
 
 export interface TopicPost {
@@ -28,9 +30,12 @@ export interface TopicPost {
   };
 }
 
+export type TopicSortType = "trending" | "popular" | "alphabetical" | "recent";
+
 export const useTopics = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<TopicSortType>("recent");
   const { user } = useSupabaseAuth();
 
   const fetchTopics = async () => {
@@ -44,13 +49,61 @@ export const useTopics = () => {
         console.error('Error fetching topics:', error);
         return;
       }
-      setTopics(data || []);
+
+      // Get additional stats for each topic
+      const topicsWithStats = await Promise.all(
+        (data || []).map(async (topic) => {
+          // Get post count
+          const { count: postCount } = await supabase
+            .from('topic_posts')
+            .select('*', { count: 'exact', head: true })
+            .eq('topic_id', topic.id);
+
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from('topic_memberships')
+            .select('*', { count: 'exact', head: true })
+            .eq('topic_id', topic.id);
+
+          return {
+            ...topic,
+            post_count: postCount || 0,
+            member_count: memberCount || 0
+          };
+        })
+      );
+
+      setTopics(topicsWithStats);
     } catch (error) {
       console.error('Error fetching topics:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const sortedTopics = useMemo(() => {
+    const sorted = [...topics];
+    
+    switch (sortBy) {
+      case "trending":
+        // Trending: most posts in last 7 days + member activity
+        return sorted.sort((a, b) => {
+          const aScore = (a.post_count || 0) + (a.member_count || 0) * 0.5;
+          const bScore = (b.post_count || 0) + (b.member_count || 0) * 0.5;
+          return bScore - aScore;
+        });
+      case "popular":
+        // Popular: most members
+        return sorted.sort((a, b) => (b.member_count || 0) - (a.member_count || 0));
+      case "alphabetical":
+        return sorted.sort((a, b) => a.title.localeCompare(b.title));
+      case "recent":
+      default:
+        return sorted.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    }
+  }, [topics, sortBy]);
 
   const createTopic = async (title: string, description?: string, isPublic: boolean = true) => {
     if (!user) {
@@ -74,9 +127,10 @@ export const useTopics = () => {
         throw error;
       }
 
-      setTopics([data, ...topics]);
+      const newTopic = { ...data, post_count: 0, member_count: 0 };
+      setTopics([newTopic, ...topics]);
       toast({ title: "Topic created successfully!" });
-      return data;
+      return newTopic;
     } catch (error) {
       console.error('Error creating topic:', error);
       toast({ title: "Error", description: "Failed to create topic", variant: "destructive" });
@@ -99,6 +153,7 @@ export const useTopics = () => {
       }
 
       toast({ title: "Joined topic successfully!" });
+      fetchTopics(); // Refresh to update member counts
     } catch (error) {
       console.error('Error joining topic:', error);
       toast({ title: "Error", description: "Failed to join topic", variant: "destructive" });
@@ -110,8 +165,10 @@ export const useTopics = () => {
   }, []);
 
   return {
-    topics,
+    topics: sortedTopics,
     loading,
+    sortBy,
+    setSortBy,
     createTopic,
     joinTopic,
     refetchTopics: fetchTopics

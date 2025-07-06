@@ -18,23 +18,35 @@ export const useTopicPosts = (topicId?: string) => {
     }
 
     try {
-      const { data, error } = await supabase
+      // First get the posts
+      const { data: postsData, error: postsError } = await supabase
         .from('topic_posts')
-        .select(`
-          *,
-          profiles:profiles (
-            username,
-            avatar
-          )
-        `)
+        .select('*')
         .eq('topic_id', topicId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching topic posts:', error);
+      if (postsError) {
+        console.error('Error fetching topic posts:', postsError);
         return;
       }
-      setPosts(data || []);
+
+      // Then get the profiles for each post
+      const postsWithProfiles = await Promise.all(
+        (postsData || []).map(async (post) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar')
+            .eq('id', post.user_id)
+            .single();
+
+          return {
+            ...post,
+            profiles: profile || { username: 'Unknown User', avatar: null }
+          };
+        })
+      );
+
+      setPosts(postsWithProfiles);
     } catch (error) {
       console.error('Error fetching topic posts:', error);
     } finally {
@@ -76,20 +88,26 @@ export const useTopicPosts = (topicId?: string) => {
           content,
           image: imageUrl
         }])
-        .select(`
-          *,
-          profiles:profiles (
-            username,
-            avatar
-          )
-        `)
+        .select()
         .single();
 
       if (error) {
         throw error;
       }
 
-      setPosts([data, ...posts]);
+      // Get the profile for the new post
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, avatar')
+        .eq('id', user.id)
+        .single();
+
+      const newPost = {
+        ...data,
+        profiles: profile || { username: 'Unknown User', avatar: null }
+      };
+
+      setPosts([newPost, ...posts]);
       toast({ title: "Post created successfully!" });
     } catch (error) {
       console.error('Error creating topic post:', error);
@@ -103,21 +121,27 @@ export const useTopicPosts = (topicId?: string) => {
         .from('topic_posts')
         .update(updates)
         .eq('id', postId)
-        .select(`
-          *,
-          profiles:profiles (
-            username,
-            avatar
-          )
-        `)
+        .select()
         .single();
 
       if (error) {
         throw error;
       }
 
+      // Get the profile for the updated post
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, avatar')
+        .eq('id', data.user_id)
+        .single();
+
+      const updatedPost = {
+        ...data,
+        profiles: profile || { username: 'Unknown User', avatar: null }
+      };
+
       setPosts(posts.map(post =>
-        post.id === postId ? { ...post, ...data } : post
+        post.id === postId ? { ...post, ...updatedPost } : post
       ));
     } catch (error) {
       console.error('Error updating topic post:', error);
