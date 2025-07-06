@@ -1,42 +1,49 @@
-
-import React, { useState, useMemo } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { SupabaseAuthForm } from '@/components/auth/SupabaseAuthForm';
-import { Navbar } from '@/components/layout/Navbar';
-import { SupabaseCreatePost } from '@/components/feed/SupabaseCreatePost';
-import { SupabasePostCard } from '@/components/feed/SupabasePostCard';
-import { UserProfile } from '@/components/profile/UserProfile';
-import { SupabaseFriendsList } from '@/components/friends/SupabaseFriendsList';
-import { MessagesList } from '@/components/messages/MessagesList';
-import { usePosts } from '@/hooks/usePosts';
-import { useSearchParams } from 'react-router-dom';
-import { SupabaseSearch } from '@/components/search/SupabaseSearch';
+import React, { useState, useMemo } from "react";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { SupabaseAuthForm } from "@/components/auth/SupabaseAuthForm";
+import { Navbar } from "@/components/layout/Navbar";
+import { SupabaseCreatePost } from "@/components/feed/SupabaseCreatePost";
+import { SupabasePostCard } from "@/components/feed/SupabasePostCard";
+import { UserProfile } from "@/components/profile/UserProfile";
+import { SupabaseFriendsList } from "@/components/friends/SupabaseFriendsList";
+import { MessagesList } from "@/components/messages/MessagesList";
+import { usePosts } from "@/hooks/usePosts";
+import { useSearchParams } from "react-router-dom";
+import { SupabaseSearch } from "@/components/search/SupabaseSearch";
 import { ConversationsList } from "@/components/messages/ConversationsList";
 import { CreateGroupConversation } from "@/components/messages/CreateGroupConversation";
 import { useNavigate } from "react-router-dom";
-import { FeedFilters, FeedFilterType, FeedSortType } from '@/components/feed/FeedFilters';
-import { TopicsSidebar } from '@/components/topics/TopicsSidebar';
-import { TopicCreatePost } from '@/components/topics/TopicCreatePost';
-import { TopicPostCard } from '@/components/topics/TopicPostCard';
-import { useTopicPosts } from '@/hooks/useTopicPosts';
-import { useTopics } from '@/hooks/useTopics';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { Users, MessageSquare } from 'lucide-react';
+import {
+  FeedFilters,
+  FeedFilterType,
+  FeedSortType,
+} from "@/components/feed/FeedFilters";
+import { TopicsSidebar } from "@/components/topics/TopicsSidebar";
+import { TopicCreatePost } from "@/components/topics/TopicCreatePost";
+import { TopicPostCard } from "@/components/topics/TopicPostCard";
+import { useTopicPosts } from "@/hooks/useTopicPosts";
+import { useTopics } from "@/hooks/useTopics";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { Users, MessageSquare } from "lucide-react";
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
   const { posts, createPost, updatePost } = usePosts();
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'home';
+  const initialTab = searchParams.get("tab") || "home";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [selectedTopicId, setSelectedTopicId] = useState<string>();
   const navigate = useNavigate();
 
   const { topics, refetchTopics, joinTopic } = useTopics();
-  const { posts: topicPosts, createTopicPost, updateTopicPost } = useTopicPosts(selectedTopicId);
+  const {
+    posts: topicPosts,
+    createTopicPost,
+    updateTopicPost,
+  } = useTopicPosts(selectedTopicId);
 
   // Filtering & Sorting State
   const [filter, setFilter] = useState<FeedFilterType>("all");
@@ -52,34 +59,38 @@ const MainApp: React.FC = () => {
   const filteredSortedPosts = useMemo(() => {
     let filtered = posts;
     if (filter === "friends" && friendsIds.length) {
-      filtered = posts.filter(p => friendsIds.includes(p.user_id));
+      filtered = posts.filter((p) => friendsIds.includes(p.user_id));
     }
     // Sort logic
     if (sort === "recent") {
-      filtered = [...filtered].sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      filtered = [...filtered].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     } else if (sort === "oldest") {
-      filtered = [...filtered].sort((a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      filtered = [...filtered].sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
     } else if (sort === "popular") {
-      filtered = [...filtered].sort((a, b) =>
-        (b.likes?.length || 0) - (a.likes?.length || 0)
+      filtered = [...filtered].sort(
+        (a, b) => (b.likes?.length || 0) - (a.likes?.length || 0)
       );
     } else if (sort === "trending") {
       // Trending: posts with most likes in last 48h
       const since = Date.now() - 1000 * 60 * 60 * 48;
       filtered = [...filtered].sort((a, b) => {
-        const aRecent = new Date(a.created_at).getTime() > since ? (a.likes?.length || 0) : 0;
-        const bRecent = new Date(b.created_at).getTime() > since ? (b.likes?.length || 0) : 0;
+        const aRecent =
+          new Date(a.created_at).getTime() > since ? a.likes?.length || 0 : 0;
+        const bRecent =
+          new Date(b.created_at).getTime() > since ? b.likes?.length || 0 : 0;
         return bRecent - aRecent;
       });
     }
     return filtered;
   }, [posts, filter, sort, friendsIds]);
 
-  const selectedTopic = topics.find(t => t.id === selectedTopicId);
+  const selectedTopic = topics.find((t) => t.id === selectedTopicId);
 
   const handleBackToFeed = () => {
     setSelectedTopicId(undefined);
@@ -97,12 +108,12 @@ const MainApp: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
         </div>
-      </div>
     );
   }
 
@@ -115,7 +126,7 @@ const MainApp: React.FC = () => {
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       <SupabaseSearch />
       <div className="container mx-auto px-4 py-6">
-        {activeTab === 'home' && (
+        {activeTab === "home" && (
           <div className="flex gap-6">
             <TopicsSidebar
               selectedTopicId={selectedTopicId}
@@ -137,9 +148,7 @@ const MainApp: React.FC = () => {
                             >
                               <ArrowLeft size={16} />
                             </Button>
-                            <div>
-                              # {selectedTopic.title}
-                            </div>
+                            <div># {selectedTopic.title}</div>
                           </div>
                           {!selectedTopic.is_member && (
                             <Button onClick={handleJoinTopic} size="sm">
@@ -148,12 +157,16 @@ const MainApp: React.FC = () => {
                           )}
                         </CardTitle>
                         {selectedTopic.description && (
-                          <p className="text-muted-foreground ml-11">{selectedTopic.description}</p>
+                          <p className="text-muted-foreground ml-11">
+                            {selectedTopic.description}
+                          </p>
                         )}
                         <div className="flex items-center gap-4 ml-11 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Users size={14} />
-                            <span>{selectedTopic.member_count || 0} members</span>
+                            <span>
+                              {selectedTopic.member_count || 0} members
+                            </span>
                           </div>
                           <div className="flex items-center gap-1">
                             <MessageSquare size={14} />
@@ -211,7 +224,8 @@ const MainApp: React.FC = () => {
                           Welcome to SocialConnect!
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-4">
-                          Start by creating your first post or selecting a topic to join the conversation.
+                          Start by creating your first post or selecting a topic
+                          to join the conversation.
                         </p>
                       </div>
                     )}
@@ -222,13 +236,11 @@ const MainApp: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'profile' && <UserProfile />}
-        {activeTab === 'friends' && <SupabaseFriendsList />}
-        {activeTab === 'messages' && (
+        {activeTab === "profile" && <UserProfile />}
+        {activeTab === "friends" && <SupabaseFriendsList />}
+        {activeTab === "messages" && (
           <div className="max-w-2xl mx-auto">
-            <ConversationsList
-              onCreateGroup={() => setShowCreateGroup(true)}
-            />
+            <ConversationsList onCreateGroup={() => setShowCreateGroup(true)} />
             <CreateGroupConversation
               open={showCreateGroup}
               onOpenChange={setShowCreateGroup}
@@ -244,9 +256,7 @@ const MainApp: React.FC = () => {
 };
 
 const SupabaseIndex = () => {
-  return (
-    <MainApp />
-  );
+  return <MainApp />;
 };
 
 export default SupabaseIndex;

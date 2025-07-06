@@ -4,6 +4,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+
 export const NotificationsList: React.FC = () => {
   const { notifications, isLoading, markAsRead } = useNotifications();
 

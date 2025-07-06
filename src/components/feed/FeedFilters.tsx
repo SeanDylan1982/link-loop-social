@@ -20,13 +20,13 @@ export const FeedFilters: React.FC<FeedFiltersProps> = ({
   onSortChange,
 }) => {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2 mb-4 border rounded-lg bg-white">
+    <div className="bg-sidebar text-sidebar-foreground border border-sidebar-border rounded-lg p-3 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div className="flex gap-2 items-center">
         <span className="font-medium">Show:</span>
         <ToggleGroup
           type="single"
           value={filter}
-          onValueChange={val => val && onFilterChange(val as FeedFilterType)}
+          onValueChange={(val) => val && onFilterChange(val as FeedFilterType)}
           variant="outline"
           size="sm"
         >
@@ -36,14 +36,21 @@ export const FeedFilters: React.FC<FeedFiltersProps> = ({
       </div>
       <div className="flex gap-2 items-center">
         <span className="font-medium">Sort by:</span>
-        <Select value={sort} onValueChange={val => onSortChange(val as FeedSortType)}>
+        <Select
+          value={sort}
+          onValueChange={(val) => onSortChange(val as FeedSortType)}
+        >
           <SelectTrigger className="w-36">
-            <SelectValue>{{
-              recent: "Most Recent",
-              oldest: "Oldest",
-              popular: "Most Popular",
-              trending: "Trending Recently"
-            }[sort]}</SelectValue>
+            <SelectValue>
+              {
+                {
+                  recent: "Most Recent",
+                  oldest: "Oldest",
+                  popular: "Most Popular",
+                  trending: "Trending Recently",
+                }[sort]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="recent">Most Recent</SelectItem>
