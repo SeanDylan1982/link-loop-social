@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseAuthForm } from '@/components/auth/SupabaseAuthForm';
@@ -34,7 +35,7 @@ const MainApp: React.FC = () => {
   const [selectedTopicId, setSelectedTopicId] = useState<string>();
   const navigate = useNavigate();
 
-  const { topics, refetchTopics } = useTopics();
+  const { topics, refetchTopics, joinTopic } = useTopics();
   const { posts: topicPosts, createTopicPost, updateTopicPost } = useTopicPosts(selectedTopicId);
 
   // Filtering & Sorting State

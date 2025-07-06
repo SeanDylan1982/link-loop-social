@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon, Hash, Users, MessageSquare } from 'lucide-react';
 
 function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -34,11 +34,21 @@ type Post = {
   }
 }
 
+type Topic = {
+  id: string;
+  title: string;
+  description?: string | null;
+  member_count?: number;
+  post_count?: number;
+  is_public: boolean;
+}
+
 export const SupabaseSearch: React.FC = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [people, setPeople] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [touched, setTouched] = useState(false);
 
   // Debounce search handler
@@ -46,6 +56,7 @@ export const SupabaseSearch: React.FC = () => {
     if (!q) {
       setPeople([]);
       setPosts([]);
+      setTopics([]);
       setLoading(false);
       return;
     }
@@ -66,8 +77,40 @@ export const SupabaseSearch: React.FC = () => {
       .order('created_at', { ascending: false })
       .limit(7);
 
+    // Search topics (title, description)
+    const { data: topicResults } = await supabase
+      .from('topics')
+      .select('id, title, description, is_public')
+      .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
+      .eq('is_public', true)
+      .limit(7);
+
+    // Get member and post counts for topics
+    const topicsWithStats = await Promise.all(
+      (topicResults || []).map(async (topic) => {
+        // Get post count
+        const { count: postCount } = await supabase
+          .from('topic_posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('topic_id', topic.id);
+
+        // Get member count
+        const { count: memberCount } = await supabase
+          .from('topic_memberships')
+          .select('*', { count: 'exact', head: true })
+          .eq('topic_id', topic.id);
+
+        return {
+          ...topic,
+          post_count: postCount || 0,
+          member_count: memberCount || 0
+        };
+      })
+    );
+
     setPeople(peopleResults || []);
     setPosts(postResults || []);
+    setTopics(topicsWithStats);
     setLoading(false);
   }, 400));
 
@@ -77,18 +120,24 @@ export const SupabaseSearch: React.FC = () => {
     searchRef.current(e.target.value.trim());
   };
 
+  const handleTopicClick = () => {
+    setSearch("");
+    // Navigate to home and let the topics sidebar handle selection
+    window.location.href = '/';
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto mb-8 relative">
       <div className="flex items-center bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
         <SearchIcon className="mr-2 text-gray-400" size={20} />
         <Input
-          placeholder="Search for people, posts, ..."
+          placeholder="Search for people, posts, topics..."
           value={search}
           onChange={onSearchChange}
           className="border-0 shadow-none focus:ring-0 bg-transparent"
         />
       </div>
-      {(touched && (loading || people.length > 0 || posts.length > 0 || search)) && (
+      {(touched && (loading || people.length > 0 || posts.length > 0 || topics.length > 0 || search)) && (
         <div className="absolute z-20 mt-2 w-full">
           <Card className="rounded-xl shadow-xl border bg-white">
             <CardContent className="p-0">
@@ -96,8 +145,43 @@ export const SupabaseSearch: React.FC = () => {
                 {loading && (
                   <div className="text-center p-4 text-gray-400">Searching...</div>
                 )}
-                {!loading && (people.length > 0 || posts.length > 0) && (
+                {!loading && (people.length > 0 || posts.length > 0 || topics.length > 0) && (
                   <div>
+                    {topics.length > 0 && (
+                      <div>
+                        <div className="px-4 pt-3 pb-1 text-xs text-gray-500 uppercase font-semibold tracking-widest">
+                          Topics
+                        </div>
+                        <ul>
+                          {topics.map(topic => (
+                            <li key={topic.id}>
+                              <button
+                                onClick={handleTopicClick}
+                                className="w-full flex items-center px-4 py-2 hover:bg-gray-100 transition text-left"
+                              >
+                                <Hash className="w-5 h-5 mr-2 text-gray-500" />
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-800">{topic.title}</div>
+                                  {topic.description && (
+                                    <div className="text-xs text-gray-500 truncate">{topic.description}</div>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                                    <div className="flex items-center gap-1">
+                                      <Users size={10} />
+                                      <span>{topic.member_count} members</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <MessageSquare size={10} />
+                                      <span>{topic.post_count} posts</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {people.length > 0 && (
                       <div>
                         <div className="px-4 pt-3 pb-1 text-xs text-gray-500 uppercase font-semibold tracking-widest">
@@ -161,7 +245,7 @@ export const SupabaseSearch: React.FC = () => {
                     )}
                   </div>
                 )}
-                {!loading && people.length === 0 && posts.length === 0 && search && (
+                {!loading && people.length === 0 && posts.length === 0 && topics.length === 0 && search && (
                   <div className="text-gray-400 text-center p-4">No results found.</div>
                 )}
               </div>

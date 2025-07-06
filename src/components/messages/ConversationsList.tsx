@@ -12,14 +12,14 @@ interface ConversationsListProps {
 }
 
 export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGroup }) => {
-  const { conversations, loading } = useConversations();
+  const { conversations, isLoading } = useConversations();
   const navigate = useNavigate();
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
