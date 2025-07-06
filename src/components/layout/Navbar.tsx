@@ -48,11 +48,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
     <nav className="bg-white dark:bg-background shadow-lg border-b sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-12">
             <h1 className="text-2xl font-bold text-blue-600 dark:text-primary">
               SocialConnect
             </h1>
-            <div className="hidden md:flex space-x-4">
+            <div className="hidden md:flex space-x-12">
               {navItems.slice(0, 3).map((item) => (
                 <Button
                   key={item.id}
@@ -64,27 +64,33 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
                   <span>{item.label}</span>
                 </Button>
               ))}
-              <NotificationIcon
-                onClick={() => {
-                  navigate('/notifications');
-                }}
-              />
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <DarkModeToggle />
+            <NotificationIcon
+              onClick={() => {
+                navigate("/notifications");
+              }}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2 p-2">
+                <Button
+                  variant="ghost"
+                  className="flex items-center space-x-2 p-2"
+                >
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={profile?.avatar} />
-                    <AvatarFallback>{profile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>
+                      {profile?.username?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="hidden sm:block text-sm font-medium">{profile?.username}</span>
+                  <span className="hidden sm:block text-sm font-medium">
+                    {profile?.username}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => onTabChange('profile')}>
+                <DropdownMenuItem onClick={() => onTabChange("profile")}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
@@ -95,6 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <DarkModeToggle />
           </div>
         </div>
 
@@ -112,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
           ))}
           <NotificationIcon
             onClick={() => {
-              navigate('/notifications');
+              navigate("/notifications");
             }}
           />
           {navItems.slice(3).map((item) => (
