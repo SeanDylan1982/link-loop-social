@@ -1,136 +1,156 @@
 
-import React, { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useConversations } from "@/hooks/useConversations";
-import { useToast } from "@/hooks/use-toast";
-import { DirectMessageModal } from "./DirectMessageModal";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MessageSquare, Search } from 'lucide-react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { DirectMessageModal } from './DirectMessageModal';
 
-interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  afterNavigate: (conversationId: string) => void;
+interface Friend {
+  id: string;
+  username: string;
+  avatar?: string;
 }
 
-export const NewDirectMessageDialog: React.FC<Props> = ({
-  open,
-  onOpenChange,
-  afterNavigate,
-}) => {
-  const { getFriends, getOrCreateDM } = useConversations();
-  const [friends, setFriends] = useState<any[]>([]);
+export const NewDirectMessageDialog = () => {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [dmModalOpen, setDMModalOpen] = useState(false);
-  const [selectedFriend, setSelectedFriend] = useState<any>(null);
-  const { toast } = useToast();
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [dmModalOpen, setDmModalOpen] = useState(false);
+  const { user } = useSupabaseAuth();
 
-  const fetchFriends = async () => {
+  const searchFriends = async () => {
+    if (!user || !searchTerm.trim()) return;
+
     setLoading(true);
-    setError(null);
     try {
-      const f = await getFriends();
-      setFriends(f);
-    } catch (err: any) {
-      setError("Failed to load friends. Please try again.");
-      setFriends([]);
-      toast({ title: "Error loading friends", description: err?.message || "" });
+      // Search for friends by username
+      const { data: friendships, error: friendshipsError } = await supabase
+        .from('friendships')
+        .select('user1_id, user2_id')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+      if (friendshipsError) {
+        throw friendshipsError;
+      }
+
+      // Get friend IDs
+      const friendIds = friendships?.map(f => 
+        f.user1_id === user.id ? f.user2_id : f.user1_id
+      ) || [];
+
+      if (friendIds.length === 0) {
+        setFriends([]);
+        return;
+      }
+
+      // Get profiles of friends that match search term
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar')
+        .in('id', friendIds)
+        .ilike('username', `%${searchTerm}%`);
+
+      if (profilesError) {
+        throw profilesError;
+      }
+
+      setFriends(profiles || []);
+    } catch (error) {
+      console.error('Error searching friends:', error);
+      toast({ title: "Error", description: "Failed to search friends", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      fetchFriends();
-      setSearch("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const filteredFriends = friends.filter(
-    (f) =>
-      f.username?.toLowerCase().includes(search.trim().toLowerCase())
-  );
-
-  const handleSelectFriend = (friend: any) => {
+  const handleFriendSelect = (friend: Friend) => {
     setSelectedFriend(friend);
-    setDMModalOpen(true);
-  };
-
-  const handleDMClose = () => {
-    setDMModalOpen(false);
-    setSelectedFriend(null);
+    setOpen(false);
+    setDmModalOpen(true);
   };
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button className="w-full">
+            <MessageSquare size={16} className="mr-2" />
+            New Message
+          </Button>
+        </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Message</DialogTitle>
+            <DialogTitle>Start a conversation</DialogTitle>
           </DialogHeader>
-          {loading ? (
-            <div className="py-4 text-gray-500">Loading friends...</div>
-          ) : error ? (
-            <div className="flex flex-col items-center gap-4 py-6 text-red-500">
-              <div>{error}</div>
-              <Button onClick={fetchFriends} disabled={loading || creating} size="sm">
-                Retry
-              </Button>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
-                  Cancel
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex gap-2">
               <Input
-                placeholder="Search friends"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                disabled={creating}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search friends..."
+                onKeyPress={(e) => e.key === 'Enter' && searchFriends()}
               />
-              <div className="max-h-56 overflow-y-auto flex flex-col gap-2">
-                {filteredFriends.length === 0 ? (
-                  <div className="text-gray-500 py-8 text-center">No friends found.</div>
+              <Button onClick={searchFriends} disabled={loading}>
+                <Search size={16} />
+              </Button>
+            </div>
+            <ScrollArea className="h-64">
+              <div className="space-y-2">
+                {loading ? (
+                  <div className="animate-pulse space-y-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-12 bg-muted rounded" />
+                    ))}
+                  </div>
+                ) : friends.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    {searchTerm ? 'No friends found' : 'Search for friends to start a conversation'}
+                  </div>
                 ) : (
-                  filteredFriends.map(friend => (
-                    <button
+                  friends.map((friend) => (
+                    <Button
                       key={friend.id}
-                      className="flex items-center gap-3 px-2 py-2 hover:bg-muted rounded w-full text-left"
-                      onClick={() => handleSelectFriend(friend)}
-                      disabled={creating}
+                      variant="ghost"
+                      className="w-full justify-start p-3 h-auto"
+                      onClick={() => handleFriendSelect(friend)}
                     >
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={friend.avatar || undefined} />
-                        <AvatarFallback>{friend.username?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{friend.username}</span>
-                    </button>
+                      <div className="flex items-center gap-3">
+                        {friend.avatar ? (
+                          <img 
+                            src={friend.avatar} 
+                            alt={friend.username}
+                            className="w-8 h-8 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                            {friend.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span>{friend.username}</span>
+                      </div>
+                    </Button>
                   ))
                 )}
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)} type="button">
-                  Cancel
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
-      <DirectMessageModal
-        open={dmModalOpen}
-        onOpenChange={handleDMClose}
-        friend={selectedFriend}
-      />
+
+      {selectedFriend && (
+        <DirectMessageModal
+          friend={selectedFriend}
+          isOpen={dmModalOpen}
+          onClose={() => setDmModalOpen(false)}
+        />
+      )}
     </>
   );
 };
-

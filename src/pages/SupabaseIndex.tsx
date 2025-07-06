@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseAuthForm } from '@/components/auth/SupabaseAuthForm';
@@ -34,7 +33,7 @@ const MainApp: React.FC = () => {
   const [selectedTopicId, setSelectedTopicId] = useState<string>();
   const navigate = useNavigate();
 
-  const { topics } = useTopics();
+  const { topics, refetchTopics } = useTopics();
   const { posts: topicPosts, createTopicPost, updateTopicPost } = useTopicPosts(selectedTopicId);
 
   // Filtering & Sorting State
@@ -82,6 +81,10 @@ const MainApp: React.FC = () => {
 
   const handleBackToFeed = () => {
     setSelectedTopicId(undefined);
+  };
+
+  const handleTopicPostCreated = (content: string, imageFile?: File | null) => {
+    return createTopicPost(content, imageFile, refetchTopics);
   };
 
   if (loading) {
@@ -135,7 +138,7 @@ const MainApp: React.FC = () => {
                       </CardHeader>
                     </Card>
                   )}
-                  <TopicCreatePost onPostCreated={createTopicPost} />
+                  <TopicCreatePost onPostCreated={handleTopicPostCreated} />
                   <div className="space-y-4">
                     {topicPosts.length > 0 ? (
                       topicPosts.map((post) => (

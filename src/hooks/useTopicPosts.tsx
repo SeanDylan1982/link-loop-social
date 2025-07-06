@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -54,7 +53,7 @@ export const useTopicPosts = (topicId?: string) => {
     }
   };
 
-  const createTopicPost = async (content: string, imageFile?: File | null) => {
+  const createTopicPost = async (content: string, imageFile?: File | null, onPostCreated?: () => void) => {
     if (!user || !topicId) {
       toast({ title: "Error", description: "You must be logged in to create a post", variant: "destructive" });
       return;
@@ -109,6 +108,11 @@ export const useTopicPosts = (topicId?: string) => {
 
       setPosts([newPost, ...posts]);
       toast({ title: "Post created successfully!" });
+      
+      // Call the callback to refresh topic stats
+      if (onPostCreated) {
+        onPostCreated();
+      }
     } catch (error) {
       console.error('Error creating topic post:', error);
       toast({ title: "Error", description: "Failed to create post", variant: "destructive" });

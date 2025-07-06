@@ -127,7 +127,15 @@ export const useTopics = () => {
         throw error;
       }
 
-      const newTopic = { ...data, post_count: 0, member_count: 0 };
+      // Auto-join the creator as a member
+      await supabase
+        .from('topic_memberships')
+        .insert([{
+          topic_id: data.id,
+          user_id: user.id
+        }]);
+
+      const newTopic = { ...data, post_count: 0, member_count: 1 };
       setTopics([newTopic, ...topics]);
       toast({ title: "Topic created successfully!" });
       return newTopic;
