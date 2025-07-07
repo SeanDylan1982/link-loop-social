@@ -9,21 +9,24 @@ export type ConversationParticipant = Tables<'conversation_participants'>;
 
 // Fetch all conversations for a user
 const getUserConversations = async (userId: string) => {
+  console.log('[getUserConversations] Starting fetch for userId:', userId);
+  
   // Fetch list of conversation IDs for this user as participant
   const { data: participationRows, error: partErr } = await supabase
     .from('conversation_participants')
     .select('conversation_id')
     .eq('user_id', userId);
-  console.log('[getUserConversations] participationRows:', participationRows);
+  
   if (partErr) {
     console.error('[getUserConversations] participationRows error:', partErr);
     throw partErr;
   }
+  
   const ids = participationRows?.map(cp => cp.conversation_id) || [];
   console.log('[getUserConversations] conversation IDs:', ids);
 
   if (ids.length === 0) {
-    console.warn('[getUserConversations] No conversation_participants found for userId:', userId);
+    console.log('[getUserConversations] No conversation_participants found for userId:', userId);
     return [];
   }
 
@@ -41,10 +44,12 @@ const getUserConversations = async (userId: string) => {
     `)
     .in('id', ids)
     .order('updated_at', { ascending: false });
+  
   if (error) {
     console.error('[getUserConversations] conversations fetch error:', error);
     throw error;
   }
+  
   console.log('[getUserConversations] conversations fetch data:', data);
 
   // Flatten for UI
@@ -60,11 +65,16 @@ const getUserConversations = async (userId: string) => {
 
 // Fetch all profiles except yours
 const getAllProfiles = async (excludeId: string) => {
+  console.log('[getAllProfiles] Fetching profiles excluding:', excludeId);
   const { data, error } = await supabase
     .from('profiles')
     .select('id, username, avatar')
     .neq('id', excludeId);
-  if (error) throw error;
+  if (error) {
+    console.error('[getAllProfiles] error:', error);
+    throw error;
+  }
+  console.log('[getAllProfiles] result:', data?.length, 'profiles');
   return data || [];
 };
 
@@ -72,6 +82,8 @@ const getAllProfiles = async (excludeId: string) => {
 const createGroupConversation = async ({
   title, participantIds, isGroup, creatorId
 }: { title: string; participantIds: string[]; isGroup: boolean; creatorId: string }) => {
+  console.log('[createGroupConversation] Creating with:', { title, participantIds, isGroup, creatorId });
+  
   const { data: conversation, error } = await supabase
     .from('conversations')
     .insert([
@@ -79,7 +91,11 @@ const createGroupConversation = async ({
     ])
     .select()
     .single();
-  if (error) throw error;
+  
+  if (error) {
+    console.error('[createGroupConversation] conversation error:', error);
+    throw error;
+  }
 
   // Add participants including the creator
   const allParticipantIds = [...new Set([creatorId, ...participantIds])]; // Use Set to avoid duplicates
@@ -88,30 +104,56 @@ const createGroupConversation = async ({
     user_id: id
   }));
   
+  console.log('[createGroupConversation] Adding participants:', participantsToAdd);
+  
   const { error: participantError } = await supabase
     .from('conversation_participants')
     .insert(participantsToAdd);
   
-  if (participantError) throw participantError;
+  if (participantError) {
+    console.error('[createGroupConversation] participant error:', participantError);
+    throw participantError;
+  }
 
+  console.log('[createGroupConversation] Success, conversation:', conversation);
   return conversation;
 };
 
 // Get your friends for the DM dialog
 const getFriendsList = async (userId: string) => {
+  console.log('[getFriendsList] Fetching friends for userId:', userId);
+  
   // Get friendships where you're user1 or user2, and get profile for the other user
-  const { data: friendships } = await supabase
+  const { data: friendships, error } = await supabase
     .from('friendships')
     .select('user1_id, user2_id');
+  
+  if (error) {
+    console.error('[getFriendsList] friendships error:', error);
+    throw error;
+  }
+  
   if (!friendships) return [];
+  
   const friendIds = friendships
     .filter(f => f.user1_id === userId || f.user2_id === userId)
     .map(f => f.user1_id === userId ? f.user2_id : f.user1_id);
+  
+  console.log('[getFriendsList] Friend IDs:', friendIds);
+  
   if (friendIds.length === 0) return [];
-  const { data: friendProfiles } = await supabase
+  
+  const { data: friendProfiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id, username, avatar')
     .in('id', friendIds);
+  
+  if (profilesError) {
+    console.error('[getFriendsList] profiles error:', profilesError);
+    throw profilesError;
+  }
+  
+  console.log('[getFriendsList] Friend profiles:', friendProfiles?.length);
   return friendProfiles || [];
 };
 
@@ -120,13 +162,19 @@ const getOrCreateDirectConversation = async ({
   userId,
   friendId,
 }: { userId: string, friendId: string }) => {
+  console.log('[getOrCreateDirectConversation] Finding/creating DM between:', userId, 'and', friendId);
+  
   // 1. Search for existing direct conversation with both participants, is_group false
   const { data: candidateConvs, error } = await supabase
     .from('conversations')
     .select('id')
     .eq('is_group', false);
 
-  if (error) throw error;
+  if (error) {
+    console.error('[getOrCreateDirectConversation] error fetching conversations:', error);
+    throw error;
+  }
+  
   // For each, check if both userId and friendId exist in conversation_participants (exactly two participants)
   for (const conv of candidateConvs || []) {
     // Fetch participants for this conversation
@@ -136,21 +184,31 @@ const getOrCreateDirectConversation = async ({
       .eq('conversation_id', conv.id);
     const participantIds = (parts || []).map(p => p.user_id);
     if (participantIds.length === 2 && participantIds.includes(userId) && participantIds.includes(friendId)) {
+      console.log('[getOrCreateDirectConversation] Found existing DM:', conv.id);
       return { id: conv.id };
     }
   }
+  
   // 2. Otherwise create direct conversation, setting creator_id
+  console.log('[getOrCreateDirectConversation] Creating new DM');
   const { data: conversation, error: cError } = await supabase
     .from('conversations')
     .insert([{ title: null, is_group: false, creator_id: userId }])
     .select()
     .single();
-  if (cError) throw cError;
+  
+  if (cError) {
+    console.error('[getOrCreateDirectConversation] error creating conversation:', cError);
+    throw cError;
+  }
+  
   // Insert participants
   await supabase.from('conversation_participants').insert([
     { conversation_id: conversation.id, user_id: userId },
     { conversation_id: conversation.id, user_id: friendId }
   ]);
+  
+  console.log('[getOrCreateDirectConversation] Created new DM:', conversation.id);
   return { id: conversation.id };
 };
 
@@ -162,10 +220,13 @@ export const useConversations = () => {
     queryKey: ['conversations', user?.id],
     queryFn: () => getUserConversations(user!.id),
     enabled: !!user,
+    staleTime: 30000, // Cache for 30 seconds to avoid too frequent refetches
   });
 
-  const getProfiles = () =>
-    getAllProfiles(user!.id);
+  const getProfiles = async () => {
+    if (!user) throw new Error("Not authenticated");
+    return getAllProfiles(user.id);
+  };
 
   const createConversationMutation = useMutation({
     mutationFn: (args: { title: string; participantIds: string[]; isGroup: boolean }) =>
@@ -176,7 +237,10 @@ export const useConversations = () => {
   });
 
   // Get friends for DMs
-  const getFriends = () => getFriendsList(user!.id);
+  const getFriends = async () => {
+    if (!user) throw new Error("Not authenticated");
+    return getFriendsList(user.id);
+  };
 
   // Logic for finding/creating direct conversations
   const getOrCreateDM = async (friendId: string) => {

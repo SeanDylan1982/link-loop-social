@@ -26,28 +26,52 @@ export const DirectMessageDialog: React.FC<DirectMessageDialogProps> = ({
 }) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { getFriends, getOrCreateDM } = useConversations();
 
   useEffect(() => {
+    let isMounted = true;
+    
     if (open) {
+      console.log('[DirectMessageDialog] Dialog opened, fetching friends');
       setLoading(true);
-      getFriends().then((friendsList) => {
-        setFriends(friendsList);
-        setLoading(false);
-      }).catch((error) => {
-        console.error('Error fetching friends:', error);
-        setLoading(false);
-      });
+      setError(null);
+      
+      getFriends()
+        .then((friendsList) => {
+          if (isMounted) {
+            console.log('[DirectMessageDialog] Fetched friends:', friendsList);
+            setFriends(friendsList);
+            setLoading(false);
+          }
+        })
+        .catch((error) => {
+          console.error('[DirectMessageDialog] Error fetching friends:', error);
+          if (isMounted) {
+            setError('Failed to load friends');
+            setLoading(false);
+          }
+        });
+    } else {
+      // Reset state when dialog closes
+      setFriends([]);
+      setError(null);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, getFriends]);
 
   const handleStartConversation = async (friend: Friend) => {
     try {
+      console.log('[DirectMessageDialog] Starting conversation with:', friend.username);
       const conversation = await getOrCreateDM(friend.id);
       onOpenChange(false);
       onConversationCreated(conversation.id);
     } catch (error) {
-      console.error('Error creating/finding conversation:', error);
+      console.error('[DirectMessageDialog] Error creating/finding conversation:', error);
+      setError('Failed to start conversation');
     }
   };
 
@@ -65,6 +89,10 @@ export const DirectMessageDialog: React.FC<DirectMessageDialogProps> = ({
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="h-12 bg-muted rounded" />
                   ))}
+                </div>
+              ) : error ? (
+                <div className="text-center text-red-500 py-8">
+                  {error}
                 </div>
               ) : friends.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">

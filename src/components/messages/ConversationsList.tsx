@@ -17,7 +17,10 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
   const navigate = useNavigate();
   const [showDMDialog, setShowDMDialog] = useState(false);
 
+  console.log('[ConversationsList] Rendering with conversations:', conversations, 'loading:', isLoading);
+
   const handleConversationClick = (conversationId: string) => {
+    console.log('[ConversationsList] Navigating to conversation:', conversationId);
     navigate(`/conversation/${conversationId}`);
   };
 
@@ -74,41 +77,46 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
           <ScrollArea className="h-96">
             <div className="space-y-2">
               {conversations.length > 0 ? (
-                conversations.map((conversation) => (
-                  <Button
-                    key={conversation.id}
-                    variant="ghost"
-                    className="w-full justify-start text-left p-3 h-auto"
-                    onClick={() => handleConversationClick(conversation.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        {conversation.is_group ? (
-                          <Users size={16} />
-                        ) : (
-                          <MessageCircle size={16} />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {conversation.is_group 
-                            ? conversation.title 
-                            : conversation.participants.find(p => p.id)?.username || 'Direct Message'
-                          }
+                conversations.map((conversation) => {
+                  const displayName = conversation.is_group 
+                    ? conversation.title 
+                    : conversation.participants.find(p => p.id)?.username || 'Direct Message';
+                  
+                  const participantCount = conversation.participants.length;
+                  
+                  return (
+                    <Button
+                      key={conversation.id}
+                      variant="ghost"
+                      className="w-full justify-start text-left p-3 h-auto"
+                      onClick={() => handleConversationClick(conversation.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          {conversation.is_group ? (
+                            <Users size={16} />
+                          ) : (
+                            <MessageCircle size={16} />
+                          )}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {conversation.is_group 
-                            ? `${conversation.participants.length} members` 
-                            : 'Direct Message'
-                          }
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">
+                            {displayName}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {conversation.is_group 
+                              ? `${participantCount} members` 
+                              : 'Direct Message'
+                            }
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Button>
-                ))
+                    </Button>
+                  );
+                })
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  No conversations yet
+                  No conversations yet. Start one by clicking the buttons above!
                 </div>
               )}
             </div>

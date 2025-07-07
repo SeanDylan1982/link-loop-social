@@ -18,17 +18,46 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<{ id: string; username: string; avatar: string | null }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   React.useEffect(() => {
+    let isMounted = true;
+    
     if (open) {
+      console.log('[CreateGroupConversation] Dialog opened, fetching profiles');
       setLoading(true);
-      getProfiles().then((ps) => { 
-        setProfiles(ps); 
-        setLoading(false); 
-      });
+      setError(null);
+      
+      getProfiles()
+        .then((ps) => {
+          if (isMounted) {
+            console.log('[CreateGroupConversation] Fetched profiles:', ps);
+            setProfiles(ps);
+            setLoading(false);
+          }
+        })
+        .catch((error) => {
+          console.error('[CreateGroupConversation] Error fetching profiles:', error);
+          if (isMounted) {
+            setError('Failed to load users');
+            setLoading(false);
+          }
+        });
+      
+      // Reset form state
+      setTitle("");
+      setSelectedUsers([]);
+    } else {
+      // Reset state when dialog closes
+      setProfiles([]);
+      setError(null);
       setTitle("");
       setSelectedUsers([]);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, getProfiles]);
 
   const handleSelectUser = (id: string) => {
@@ -41,6 +70,7 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
     if (!title || selectedUsers.length === 0) return;
     
     try {
+      console.log('[CreateGroupConversation] Creating group with:', { title, selectedUsers });
       // The hook will automatically add the creator as a participant
       const conversation = await createConversation({
         title,
@@ -49,11 +79,13 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
       });
       
       if (conversation?.id) {
+        console.log('[CreateGroupConversation] Group created successfully:', conversation.id);
         onOpenChange(false);
         afterCreated(conversation.id);
       }
     } catch (error) {
-      console.error('Error creating group conversation:', error);
+      console.error('[CreateGroupConversation] Error creating group conversation:', error);
+      setError('Failed to create group conversation');
     }
   };
 
@@ -65,6 +97,8 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
         </DialogHeader>
         {loading ? (
           <div className="py-4 text-gray-500">Loading users...</div>
+        ) : error ? (
+          <div className="py-4 text-red-500">{error}</div>
         ) : (
           <form
             className="space-y-4"
