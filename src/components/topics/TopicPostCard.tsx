@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart } from 'lucide-react';
+import { Heart, MessageCircle } from 'lucide-react';
 import { TopicPost } from '@/hooks/useTopics';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { SupabaseComments } from '@/components/feed/SupabaseComments';
 
 interface TopicPostCardProps {
   post: TopicPost;
@@ -15,6 +16,7 @@ interface TopicPostCardProps {
 export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate }) => {
   const { user } = useSupabaseAuth();
   const [isLiking, setIsLiking] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   const handleLike = async () => {
     if (!user || isLiking) return;
@@ -64,7 +66,7 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
             className="w-full max-w-lg rounded-lg mb-3"
           />
         )}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 border-t pt-3">
           <Button
             variant="ghost"
             size="sm"
@@ -75,7 +77,21 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
             <Heart size={16} className={isLiked ? 'fill-current' : ''} />
             <span className="ml-1">{post.likes?.length || 0}</span>
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowComments(!showComments)}
+            className="flex items-center space-x-2"
+          >
+            <MessageCircle size={16} />
+            <span>Comments</span>
+          </Button>
         </div>
+        {showComments && (
+          <div className="mt-4">
+            <SupabaseComments postId={post.id} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
