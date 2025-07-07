@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { toast } from '@/hooks/use-toast';
+import { useNotificationSender } from '@/hooks/useNotificationSender';
 
 export type FriendshipStatus = 'friends' | 'request_sent' | 'request_received' | 'not_friends';
 
@@ -45,8 +46,9 @@ const fetchFriendshipStatus = async (currentUserId: string, profileId: string): 
 };
 
 export const useFriendshipStatus = (profileId: string | undefined) => {
-  const { user } = useSupabaseAuth();
+  const { user, profile } = useSupabaseAuth();
   const queryClient = useQueryClient();
+  const { sendNotification } = useNotificationSender();
 
   const { data: status, isLoading } = useQuery({
       queryKey: ['friendshipStatus', user?.id, profileId],
@@ -63,6 +65,15 @@ export const useFriendshipStatus = (profileId: string | undefined) => {
         if (error) throw error;
     },
     onSuccess: () => {
+        // Send notification to the recipient
+        if (profileId && user) {
+          sendNotification({
+            recipientId: profileId,
+            type: 'friend_request',
+            content: `${profile?.username || user.email} sent you a friend request`,
+            relatedId: user.id,
+          });
+        }
         toast({ title: "Friend request sent!" });
         queryClient.invalidateQueries({ queryKey: ['friendshipStatus', user?.id, profileId] });
     },

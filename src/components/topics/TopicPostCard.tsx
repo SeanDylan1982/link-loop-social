@@ -7,6 +7,7 @@ import { Heart, MessageCircle } from 'lucide-react';
 import { TopicPost } from '@/hooks/useTopics';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseComments } from '@/components/feed/SupabaseComments';
+import { useNotificationSender } from '@/hooks/useNotificationSender';
 
 interface TopicPostCardProps {
   post: TopicPost;
@@ -17,6 +18,7 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
   const { user } = useSupabaseAuth();
   const [isLiking, setIsLiking] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const { sendNotification } = useNotificationSender();
 
   const handleLike = async () => {
     if (!user || isLiking) return;
@@ -30,6 +32,16 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
         : [...currentLikes, user.id];
 
       await onPostUpdate(post.id, { likes: newLikes });
+
+      // Send notification if user liked the post (not if they unliked)
+      if (!isLiked && post.user_id !== user.id) {
+        sendNotification({
+          recipientId: post.user_id,
+          type: 'like',
+          content: `${user.email} liked your post in a topic`,
+          relatedId: post.id,
+        });
+      }
     } catch (error) {
       console.error('Error updating like:', error);
     } finally {
@@ -89,7 +101,7 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
         </div>
         {showComments && (
           <div className="mt-4">
-            <SupabaseComments postId={post.id} />
+            <SupabaseComments postId={post.id} postType="topic_post" />
           </div>
         )}
       </CardContent>

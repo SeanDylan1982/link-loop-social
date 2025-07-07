@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -10,9 +11,10 @@ export interface SupabaseComment {
   content: string;
   likes: string[];
   created_at: string;
+  post_type?: string;
 }
 
-export const useSupabaseComments = (postId: string) => {
+export const useSupabaseComments = (postId: string, postType: 'post' | 'topic_post' = 'post') => {
   const [comments, setComments] = useState<SupabaseComment[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useSupabaseAuth();
@@ -23,6 +25,7 @@ export const useSupabaseComments = (postId: string) => {
       .from("comments")
       .select("*")
       .eq("post_id", postId)
+      .eq("post_type", postType)
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -41,11 +44,17 @@ export const useSupabaseComments = (postId: string) => {
     }
     const { data, error } = await supabase
       .from("comments")
-      .insert([{ user_id: user.id, post_id: postId, content: text }])
+      .insert([{ 
+        user_id: user.id, 
+        post_id: postId, 
+        content: text,
+        post_type: postType 
+      }])
       .select("*")
       .single();
     if (error) {
       toast({ title: "Error", description: "Failed to add comment", variant: "destructive" });
+      console.error("Comment error:", error);
       return false;
     }
     setComments((prev) => [...prev, data]);
@@ -55,7 +64,7 @@ export const useSupabaseComments = (postId: string) => {
 
   useEffect(() => {
     fetchComments();
-  }, [postId]);
+  }, [postId, postType]);
 
   return { comments, loading, addComment, refetch: fetchComments };
 };

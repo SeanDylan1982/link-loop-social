@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +8,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { SupabaseComments } from './SupabaseComments';
 import { toast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import { useNotificationSender } from '@/hooks/useNotificationSender';
 
 interface Post {
   id: string;
@@ -30,6 +32,7 @@ interface SupabasePostCardProps {
 export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPostUpdate }) => {
   const { user } = useSupabaseAuth();
   const navigate = useNavigate();
+  const { sendNotification } = useNotificationSender();
   
   const isLiked = user ? post.likes.includes(user.id) : false;
   const likesCount = post.likes.length;
@@ -42,6 +45,16 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
       : [...post.likes, user.id];
     
     await onPostUpdate(post.id, { likes: newLikes });
+
+    // Send notification if user liked the post (not if they unliked)
+    if (!isLiked && post.user_id !== user.id) {
+      sendNotification({
+        recipientId: post.user_id,
+        type: 'like',
+        content: `${user.email} liked your post`,
+        relatedId: post.id,
+      });
+    }
   };
 
   const handleShare = async () => {
@@ -146,7 +159,7 @@ export const SupabasePostCard: React.FC<SupabasePostCardProps> = ({ post, onPost
           </Button>
         </div>
         <div onClick={e => e.stopPropagation()}>
-          <SupabaseComments postId={post.id} />
+          <SupabaseComments postId={post.id} postType="post" />
         </div>
       </CardContent>
     </Card>

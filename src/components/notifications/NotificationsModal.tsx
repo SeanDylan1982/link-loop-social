@@ -1,3 +1,5 @@
+
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,9 +8,14 @@ import {
 } from "@/components/ui/dialog";
 import { NotificationsList } from "@/components/notifications/NotificationsList";
 
-export const NotificationsModal = ({ open, onOpenChange }) => (
+interface NotificationsModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const NotificationsModal: React.FC<NotificationsModalProps> = ({ open, onOpenChange }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-lg w-full">
+    <DialogContent className="max-w-lg w-full max-h-[80vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Notifications</DialogTitle>
       </DialogHeader>

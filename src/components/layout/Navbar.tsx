@@ -67,11 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <NotificationIcon
-              onClick={() => {
-                navigate("/notifications");
-              }}
-            />
+            <NotificationIcon />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -117,11 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
               <item.icon size={16} />
             </Button>
           ))}
-          <NotificationIcon
-            onClick={() => {
-              navigate("/notifications");
-            }}
-          />
+          <NotificationIcon />
           {navItems.slice(3).map((item) => (
             <Button
               key={item.id}

@@ -21,6 +21,7 @@ export type Database = {
           id: string
           likes: string[] | null
           post_id: string
+          post_type: string | null
           user_id: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           id?: string
           likes?: string[] | null
           post_id: string
+          post_type?: string | null
           user_id: string
         }
         Update: {
@@ -37,16 +39,10 @@ export type Database = {
           id?: string
           likes?: string[] | null
           post_id?: string
+          post_type?: string | null
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "comments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "comments_user_id_fkey"
             columns: ["user_id"]

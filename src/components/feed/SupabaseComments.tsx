@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNotificationSender } from "@/hooks/useNotificationSender";
 
 interface Props {
   postId: string;
+  postType?: 'post' | 'topic_post';
 }
 
 interface Profile {
@@ -18,14 +20,34 @@ interface Profile {
   avatar?: string;
 }
 
-export const SupabaseComments: React.FC<Props> = ({ postId }) => {
+export const SupabaseComments: React.FC<Props> = ({ postId, postType = 'post' }) => {
   const { comments, loading, addComment } = useSupabaseComments(postId);
   const { user, profile } = useSupabaseAuth();
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { sendNotification } = useNotificationSender();
 
   // Map of user_id to profile
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [postOwnerId, setPostOwnerId] = useState<string | null>(null);
+
+  // Fetch post owner info to send notifications
+  useEffect(() => {
+    const fetchPostOwner = async () => {
+      const tableName = postType === 'topic_post' ? 'topic_posts' : 'posts';
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('user_id')
+        .eq('id', postId)
+        .single();
+      
+      if (!error && data) {
+        setPostOwnerId(data.user_id);
+      }
+    };
+
+    fetchPostOwner();
+  }, [postId, postType]);
 
   // Fetch all relevant profiles when comments load
   useEffect(() => {
@@ -64,10 +86,24 @@ export const SupabaseComments: React.FC<Props> = ({ postId }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() || !user) return;
+    
     setSubmitting(true);
-    await addComment(commentText.trim());
-    setCommentText("");
+    const success = await addComment(commentText.trim());
+    
+    if (success) {
+      // Send notification to post owner if it's not their own comment
+      if (postOwnerId && postOwnerId !== user.id) {
+        sendNotification({
+          recipientId: postOwnerId,
+          type: 'comment',
+          content: `${profile?.username || user.email} commented on your ${postType === 'topic_post' ? 'topic post' : 'post'}`,
+          relatedId: postId,
+        });
+      }
+      setCommentText("");
+    }
+    
     setSubmitting(false);
   };
 
