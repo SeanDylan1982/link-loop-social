@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useConversations } from '@/hooks/useConversations';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NewDirectMessageDialog } from './NewDirectMessageDialog';
@@ -14,7 +16,9 @@ interface ConversationsListProps {
 
 export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGroup }) => {
   const { conversations, isLoading } = useConversations();
+  const { user } = useSupabaseAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showDMDialog, setShowDMDialog] = useState(false);
 
   console.log('[ConversationsList] Rendering with conversations:', conversations, 'loading:', isLoading);
@@ -70,48 +74,111 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
               <Button size="sm" variant="outline" onClick={onCreateGroup} title="New Group">
                 <Plus size={16} />
               </Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                console.log('[ConversationsList] Manual refresh triggered');
+                queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              }} title="Refresh">
+                ↻
+              </Button>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-96">
-            <div className="space-y-2">
+            <div className="space-y-3 group">
               {conversations.length > 0 ? (
                 conversations.map((conversation) => {
+                  // For direct messages, find the other participant (not current user)
+                  const otherParticipant = conversation.is_group 
+                    ? null 
+                    : conversation.participants.find(p => p.id && p.id !== user?.id);
+                  
                   const displayName = conversation.is_group 
                     ? conversation.title 
-                    : conversation.participants.find(p => p.id)?.username || 'Direct Message';
+                    : otherParticipant?.username || 'Direct Message';
                   
                   const participantCount = conversation.participants.length;
+                  const lastUpdated = new Date(conversation.updated_at);
+                  const isUnread = Math.random() > 0.5; // TODO: Implement actual read status
+                  const messageStatus = ['sent', 'delivered', 'read'][Math.floor(Math.random() * 3)]; // TODO: Implement actual status
+                  const lastMessage = conversation.lastMessage || 'No messages yet';
                   
                   return (
-                    <Button
+                    <div
                       key={conversation.id}
-                      variant="ghost"
-                      className="w-full justify-start text-left p-3 h-auto"
+                      className={`relative rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors ${
+                        conversation.is_group 
+                          ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                          : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                      }`}
                       onClick={() => handleConversationClick(conversation.id)}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                           {conversation.is_group ? (
-                            <Users size={16} />
+                            <Users size={18} />
                           ) : (
-                            <MessageCircle size={16} />
+                            <MessageCircle size={18} />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">
-                            {displayName}
+                        
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className={`font-medium truncate ${
+                              isUnread ? 'font-semibold' : ''
+                            }`}>
+                              {displayName}
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {/* Message status icon */}
+                              <div className="text-xs text-muted-foreground">
+                                {messageStatus === 'sent' && '✓'}
+                                {messageStatus === 'delivered' && '✓✓'}
+                                {messageStatus === 'read' && <span className="text-blue-500">✓✓</span>}
+                              </div>
+                              {isUnread && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                              )}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {conversation.is_group 
-                              ? `${participantCount} members` 
-                              : 'Direct Message'
-                            }
+                          
+                          {!conversation.is_group && otherParticipant && (
+                            <div className="text-sm text-muted-foreground">
+                              To: {otherParticipant.username}
+                            </div>
+                          )}
+                          
+                          <div className="text-sm text-gray-600 truncate">
+                            {lastMessage}
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">
+                              {conversation.is_group 
+                                ? `${participantCount} members` 
+                                : (otherParticipant?.username || 'Unknown User')
+                              }
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {lastUpdated.toLocaleDateString()} {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
                           </div>
                         </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 p-1 h-auto flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('Delete conversation:', conversation.id);
+                            // TODO: Implement delete functionality
+                          }}
+                        >
+                          ×
+                        </Button>
                       </div>
-                    </Button>
+                    </div>
                   );
                 })
               ) : (

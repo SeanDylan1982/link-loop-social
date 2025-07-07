@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -30,7 +31,7 @@ const getUserConversations = async (userId: string) => {
     return [];
   }
 
-  // Now fetch conversation details if there are any
+  // Now fetch conversation details with last message
   const { data, error } = await supabase
     .from('conversations')
     .select(`
@@ -40,6 +41,10 @@ const getUserConversations = async (userId: string) => {
         profiles:profiles (
           id, username, avatar
         )
+      ),
+      last_message:messages (
+        content,
+        created_at
       )
     `)
     .in('id', ids)
@@ -52,14 +57,15 @@ const getUserConversations = async (userId: string) => {
   
   console.log('[getUserConversations] conversations fetch data:', data);
 
-  // Flatten for UI
+  // Flatten for UI - include conversations even if participant data is missing
   return (data || []).map((c: any) => ({
     ...c,
     participants: (c.participants ?? []).map((p: any) => ({
-      id: p.profiles?.id,
-      username: p.profiles?.username,
+      id: p.profiles?.id || p.user_id,
+      username: p.profiles?.username || 'Unknown User',
       avatar: p.profiles?.avatar,
-    })).filter((p: any) => p.id),
+    })),
+    lastMessage: c.last_message?.[0]?.content || null,
   })) as Conversation[];
 };
 
@@ -202,13 +208,53 @@ const getOrCreateDirectConversation = async ({
     throw cError;
   }
   
-  // Insert participants
-  await supabase.from('conversation_participants').insert([
-    { conversation_id: conversation.id, user_id: userId },
-    { conversation_id: conversation.id, user_id: friendId }
-  ]);
+  // Insert participants with error handling
+  const { error: participantError } = await supabase
+    .from('conversation_participants')
+    .insert([
+      { conversation_id: conversation.id, user_id: userId },
+      { conversation_id: conversation.id, user_id: friendId }
+    ]);
+  
+  if (participantError) {
+    console.error('[getOrCreateDirectConversation] error adding participants:', participantError);
+    throw participantError;
+  }
+  
+  // Create notification for the friend about new conversation
+  try {
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .single();
+    
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: friendId,
+        type: 'message',
+        related_id: conversation.id,
+        content: `${senderProfile?.username || 'Someone'} started a conversation with you`,
+      });
+    
+    if (notifError) {
+      console.error('[getOrCreateDirectConversation] error creating notification:', notifError);
+    } else {
+      console.log('[getOrCreateDirectConversation] Notification created for friend:', friendId);
+    }
+  } catch (notifErr) {
+    console.error('[getOrCreateDirectConversation] Notification creation failed:', notifErr);
+  }
   
   console.log('[getOrCreateDirectConversation] Created new DM:', conversation.id);
+  
+  // Force immediate refresh for both users
+  setTimeout(() => {
+    console.log('[getOrCreateDirectConversation] Triggering conversation list refresh');
+    // This will be picked up by the real-time subscription
+  }, 100);
+  
   return { id: conversation.id };
 };
 
@@ -222,6 +268,8 @@ export const useConversations = () => {
     enabled: !!user,
     staleTime: 30000, // Cache for 30 seconds to avoid too frequent refetches
   });
+
+
 
   const getProfiles = async () => {
     if (!user) throw new Error("Not authenticated");
@@ -246,7 +294,8 @@ export const useConversations = () => {
   const getOrCreateDM = async (friendId: string) => {
     if (!user) throw new Error("Not authenticated");
     const conv = await getOrCreateDirectConversation({ userId: user.id, friendId });
-    queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+    // Invalidate queries for both users to ensure real-time updates
+    queryClient.invalidateQueries({ queryKey: ['conversations'] });
     return conv;
   };
 

@@ -23,6 +23,7 @@ import { TopicCreatePost } from "@/components/topics/TopicCreatePost";
 import { TopicPostCard } from "@/components/topics/TopicPostCard";
 import { useTopicPosts } from "@/hooks/useTopicPosts";
 import { useTopics } from "@/hooks/useTopics";
+import { useConversationsRealtime } from "@/hooks/useConversationsRealtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -37,6 +38,9 @@ const MainApp: React.FC = () => {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [selectedTopicId, setSelectedTopicId] = useState<string>();
   const navigate = useNavigate();
+
+  // Set up real-time subscriptions for conversations (only once at app level)
+  useConversationsRealtime();
 
   const { topics, refetchTopics, joinTopic } = useTopics();
   const {

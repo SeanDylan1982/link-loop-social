@@ -116,9 +116,16 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw new Error(error.message);
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      // If logout fails (session expired/invalid), just clear local state
+      console.warn('Logout failed, clearing local state:', error);
+    } finally {
+      // Always clear local state regardless of API call success
+      setUser(null);
+      setSession(null);
+      setProfile(null);
     }
   };
 

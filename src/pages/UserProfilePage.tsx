@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useFriendshipStatus } from '@/hooks/useFriendshipStatus';
+import { useConversations } from '@/hooks/useConversations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ const UserProfilePage: React.FC = () => {
   const { user, loading: authLoading } = useSupabaseAuth();
   const { profile, posts, loading: profileLoading, error } = useUserProfile(userId);
   const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading } = useFriendshipStatus(userId);
+  const { getOrCreateDM } = useConversations();
   const navigate = useNavigate();
 
   const handleNavChange = (tab: string) => {
@@ -27,10 +29,15 @@ const UserProfilePage: React.FC = () => {
     if (!user || !userId || user.id === userId) return null;
     if (friendshipStatus === 'friends') {
       return (
-        <Button asChild>
-          <Link to={`/conversation/${userId}`}>
-            <MessageCircle className="mr-2 h-4 w-4" /> Send Message
-          </Link>
+        <Button onClick={async () => {
+          try {
+            const conversation = await getOrCreateDM(userId);
+            navigate(`/conversation/${conversation.id}`);
+          } catch (error) {
+            console.error('Error creating conversation:', error);
+          }
+        }}>
+          <MessageCircle className="mr-2 h-4 w-4" /> Send Message
         </Button>
       );
     }

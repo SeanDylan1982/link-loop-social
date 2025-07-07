@@ -3,20 +3,83 @@ import React from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 
 export const NotificationsList: React.FC = () => {
   const { notifications, isLoading, markAsRead } = useNotifications();
 
+  const markAllAsRead = async () => {
+    const unreadNotifications = notifications.filter(n => !n.read);
+    for (const notification of unreadNotifications) {
+      await markAsRead.mutateAsync(notification.id);
+    }
+  };
+  const navigate = useNavigate();
+
+  const handleNotificationClick = async (notification: any) => {
+    // Mark as read when clicked
+    if (!notification.read) {
+      markAsRead.mutate(notification.id);
+    }
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'message':
+        // For messages, find the conversation that contains this message
+        if (notification.related_id) {
+          try {
+            const { data: message } = await supabase
+              .from('messages')
+              .select('conversation_id')
+              .eq('id', notification.related_id)
+              .single();
+            
+            if (message?.conversation_id) {
+              navigate(`/conversation/${message.conversation_id}`);
+            } else {
+              console.error('Message not found for notification:', notification.related_id);
+            }
+          } catch (error) {
+            console.error('Error finding message conversation:', error);
+          }
+        }
+        break;
+      case 'friend_request':
+        navigate('/?tab=friends');
+        break;
+      case 'like':
+      case 'comment':
+        if (notification.related_id) {
+          navigate(`/post/${notification.related_id}`);
+        }
+        break;
+      default:
+        console.log('Unknown notification type:', notification.type);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          Notifications
-          <span className="ml-2 text-xs text-blue-500">
-            {notifications.filter((n) => !n.read).length > 0 &&
-              `(${notifications.filter((n) => !n.read).length} unread)`}
-          </span>
+        <CardTitle className="flex justify-between items-center">
+          <div>
+            Notifications
+            <span className="ml-2 text-xs text-blue-500">
+              {notifications.filter((n) => !n.read).length > 0 &&
+                `(${notifications.filter((n) => !n.read).length} unread)`}
+            </span>
+          </div>
+          {notifications.filter((n) => !n.read).length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={markAllAsRead}
+            >
+              Mark all as read
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -29,7 +92,8 @@ export const NotificationsList: React.FC = () => {
             {notifications.map((n) => (
               <li
                 key={n.id}
-                className={`py-2 border-b last:border-b-0 flex flex-col gap-2 ${!n.read ? "bg-blue-50" : ""}`}
+                className={`py-2 border-b last:border-b-0 flex flex-col gap-2 cursor-pointer hover:bg-gray-50 ${!n.read ? "bg-blue-50" : ""}`}
+                onClick={() => handleNotificationClick(n)}
               >
                 <div className="flex justify-between items-center">
                   <div>

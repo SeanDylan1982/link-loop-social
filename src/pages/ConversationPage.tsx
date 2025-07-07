@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConversation } from '@/hooks/useConversation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,6 +15,7 @@ const ConversationPage: React.FC = () => {
     const { conversationId } = useParams<{ conversationId?: string }>();
     const { user } = useSupabaseAuth();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [conv, setConv] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
     const convId = conversationId || undefined;
@@ -30,7 +32,15 @@ const ConversationPage: React.FC = () => {
           setLoading(true);
           const { data, error } = await supabase
             .from("conversations")
-            .select("*, participants:conversation_participants (user_id, profiles:profiles(id,username,avatar))")
+            .select(`
+              *,
+              participants:conversation_participants (
+                user_id,
+                profiles:profiles!conversation_participants_user_id_fkey (
+                  id, username, avatar
+                )
+              )
+            `)
             .eq("id", convId)
             .maybeSingle();
           if (error) console.error("Error loading conversation detail", error);
@@ -45,8 +55,12 @@ const ConversationPage: React.FC = () => {
     let receiverId: string | undefined = undefined;
     if (conv && !conv.is_group && user) {
       const participantProfiles = conv.participants as any[];
-      const other = participantProfiles?.find((p) => p.profiles?.id && p.profiles.id !== user.id);
-      receiverId = other?.profiles?.id;
+      console.log('[ConversationPage] All participants:', participantProfiles);
+      const other = participantProfiles?.find((p) => {
+        const profileId = p.profiles?.id || p.user_id;
+        return profileId && profileId !== user.id;
+      });
+      receiverId = other?.profiles?.id || other?.user_id;
       console.log("[ConversationPage] receiverId for DM:", receiverId);
     }
 
@@ -68,15 +82,30 @@ const ConversationPage: React.FC = () => {
     
     const handleSendMessage = (e: React.FormEvent) => {
       e.preventDefault();
-      if (newMessage.trim()) {
-        console.log('[ConversationPage] Sending message:', {
-            content: newMessage,
-            conversation_id: convId,
-            receiver_id: receiverId,
-            sender_id: user?.id
-        });
-        sendMessage(newMessage.trim());
+      const trimmedMessage = newMessage.trim();
+      
+      if (!trimmedMessage) {
+        console.warn('[ConversationPage] Attempted to send empty message');
+        return;
+      }
+      
+      if (!convId) {
+        console.error('[ConversationPage] No conversation ID available');
+        return;
+      }
+      
+      console.log('[ConversationPage] Sending message:', {
+          content: trimmedMessage,
+          conversation_id: convId,
+          receiver_id: receiverId,
+          sender_id: user?.id
+      });
+      
+      try {
+        sendMessage(trimmedMessage);
         setNewMessage('');
+      } catch (error) {
+        console.error('[ConversationPage] Error sending message:', error);
       }
     };
 
@@ -121,8 +150,14 @@ const ConversationPage: React.FC = () => {
                 <Card className="flex-grow flex flex-col">
                     <CardHeader className="flex flex-row items-center justify-between border-b p-4">
                         <div className="flex items-center space-x-4">
-                            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                            <Button variant="ghost" size="sm" onClick={() => navigate('/?tab=messages')}>
                                 Back
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              console.log('[ConversationPage] Manual refresh triggered');
+                              queryClient.invalidateQueries({ queryKey: ['conversation', convId] });
+                            }}>
+                                Refresh
                             </Button>
                             <Avatar>
                               {displayInfo.avatar ? (
@@ -163,13 +198,29 @@ const ConversationPage: React.FC = () => {
                             <Input
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type a message..."
+                                placeholder={conv ? "Type a message..." : "Loading conversation..."}
                                 autoComplete="off"
-                                disabled={!conv}
+                                disabled={!conv || isSending}
+                                maxLength={1000}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendMessage(e);
+                                  }
+                                }}
                             />
-                            <Button type="submit" disabled={isSending || !conv || newMessage.trim().length === 0} size="icon">
-                                <span className="sr-only">Send</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
+                            <Button 
+                              type="submit" 
+                              disabled={isSending || !conv || !newMessage.trim()} 
+                              size="icon"
+                              title={isSending ? "Sending..." : "Send message"}
+                            >
+                                <span className="sr-only">{isSending ? "Sending..." : "Send"}</span>
+                                {isSending ? (
+                                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                )}
                             </Button>
                         </form>
                     </div>
