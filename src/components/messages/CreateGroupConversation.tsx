@@ -22,28 +22,31 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
 
   React.useEffect(() => {
     let isMounted = true;
-    
+
     if (open) {
-      console.log('[CreateGroupConversation] Dialog opened, fetching profiles');
+      console.log("[CreateGroupConversation] Dialog opened, fetching profiles");
       setLoading(true);
       setError(null);
-      
+
       getProfiles()
         .then((ps) => {
           if (isMounted) {
-            console.log('[CreateGroupConversation] Fetched profiles:', ps);
+            console.log("[CreateGroupConversation] Fetched profiles:", ps);
             setProfiles(ps);
             setLoading(false);
           }
         })
         .catch((error) => {
-          console.error('[CreateGroupConversation] Error fetching profiles:', error);
+          console.error(
+            "[CreateGroupConversation] Error fetching profiles:",
+            error
+          );
           if (isMounted) {
-            setError('Failed to load users');
+            setError("Failed to load users");
             setLoading(false);
           }
         });
-      
+
       // Reset form state
       setTitle("");
       setSelectedUsers([]);
@@ -58,7 +61,7 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
     return () => {
       isMounted = false;
     };
-  }, [open, getProfiles]);
+  }, [open]);
 
   const handleSelectUser = (id: string) => {
     setSelectedUsers((prev) =>

@@ -61,7 +61,7 @@ export const DirectMessageDialog: React.FC<DirectMessageDialogProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [open, getFriends]);
+  }, [open]);
 
   const handleStartConversation = async (friend: Friend) => {
     try {

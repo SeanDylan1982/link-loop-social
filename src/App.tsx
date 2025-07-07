@@ -25,7 +25,10 @@ const App = () => (
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile/:userId" element={<UserProfilePage />} />
             <Route path="/post/:postId" element={<PostPage />} />
-            <Route path="/conversation/:userId" element={<ConversationPage />} />
+            <Route
+              path="/conversation/:conversationId"
+              element={<ConversationPage />}
+            />{" "}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

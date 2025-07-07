@@ -245,6 +245,7 @@ const MainApp: React.FC = () => {
               open={showCreateGroup}
               onOpenChange={setShowCreateGroup}
               afterCreated={(conversationId) => {
+                console.log('CONVERSATION ID - ', conversationId);
                 navigate(`/conversation/${conversationId}`);
               }}
             />
