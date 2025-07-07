@@ -22,11 +22,14 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
   React.useEffect(() => {
     if (open) {
       setLoading(true);
-      getProfiles().then((ps) => { setProfiles(ps); setLoading(false); });
+      getProfiles().then((ps) => { 
+        setProfiles(ps); 
+        setLoading(false); 
+      });
       setTitle("");
       setSelectedUsers([]);
     }
-  }, [open]);
+  }, [open, getProfiles]);
 
   const handleSelectUser = (id: string) => {
     setSelectedUsers((prev) =>
@@ -36,17 +39,21 @@ export const CreateGroupConversation: React.FC<Props> = ({ open, onOpenChange, a
 
   const handleCreate = async () => {
     if (!title || selectedUsers.length === 0) return;
-    // Always include yourself. UseMutateAsync fn in hook
-    const myId = profiles.findIndex((p) => p.id === undefined) >= 0 ? undefined : undefined; // dummy for linter
-    // Assume the hook includes the creator (supabase session)
-    const conversation = await createConversation({
-      title,
-      participantIds: selectedUsers,
-      isGroup: true,
-    });
-    if (conversation?.id) {
-      onOpenChange(false);
-      afterCreated(conversation.id);
+    
+    try {
+      // The hook will automatically add the creator as a participant
+      const conversation = await createConversation({
+        title,
+        participantIds: selectedUsers, // Just the selected users, creator will be added by the hook
+        isGroup: true,
+      });
+      
+      if (conversation?.id) {
+        onOpenChange(false);
+        afterCreated(conversation.id);
+      }
+    } catch (error) {
+      console.error('Error creating group conversation:', error);
     }
   };
 

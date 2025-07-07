@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useConversations } from '@/hooks/useConversations';
 import { Users, Plus, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { NewDirectMessageDialog } from './NewDirectMessageDialog';
 
 interface ConversationsListProps {
   onCreateGroup: () => void;
@@ -14,6 +15,7 @@ interface ConversationsListProps {
 export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGroup }) => {
   const { conversations, isLoading } = useConversations();
   const navigate = useNavigate();
+  const [showDMDialog, setShowDMDialog] = useState(false);
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`);
@@ -28,9 +30,14 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
               <MessageCircle size={20} />
               Messages
             </div>
-            <Button size="sm" variant="outline" onClick={onCreateGroup}>
-              <Plus size={16} />
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setShowDMDialog(true)}>
+                <MessageCircle size={16} />
+              </Button>
+              <Button size="sm" variant="outline" onClick={onCreateGroup}>
+                <Plus size={16} />
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -45,56 +52,75 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageCircle size={20} />
-            Messages
-          </div>
-          <Button size="sm" variant="outline" onClick={onCreateGroup}>
-            <Plus size={16} />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-96">
-          <div className="space-y-2">
-            {conversations.length > 0 ? (
-              conversations.map((conversation) => (
-                <Button
-                  key={conversation.id}
-                  variant="ghost"
-                  className="w-full justify-start text-left p-3 h-auto"
-                  onClick={() => handleConversationClick(conversation.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      {conversation.is_group ? (
-                        <Users size={16} />
-                      ) : (
-                        <MessageCircle size={16} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {conversation.title || 'Direct Message'}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={20} />
+              Messages
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setShowDMDialog(true)} title="New Direct Message">
+                <MessageCircle size={16} />
+              </Button>
+              <Button size="sm" variant="outline" onClick={onCreateGroup} title="New Group">
+                <Plus size={16} />
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-96">
+            <div className="space-y-2">
+              {conversations.length > 0 ? (
+                conversations.map((conversation) => (
+                  <Button
+                    key={conversation.id}
+                    variant="ghost"
+                    className="w-full justify-start text-left p-3 h-auto"
+                    onClick={() => handleConversationClick(conversation.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        {conversation.is_group ? (
+                          <Users size={16} />
+                        ) : (
+                          <MessageCircle size={16} />
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {conversation.is_group ? 'Group' : 'Direct'}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">
+                          {conversation.is_group 
+                            ? conversation.title 
+                            : conversation.participants.find(p => p.id)?.username || 'Direct Message'
+                          }
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {conversation.is_group 
+                            ? `${conversation.participants.length} members` 
+                            : 'Direct Message'
+                          }
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Button>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No conversations yet
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                  </Button>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No conversations yet
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      <NewDirectMessageDialog 
+        open={showDMDialog} 
+        onOpenChange={setShowDMDialog}
+        onConversationCreated={handleConversationClick}
+      />
+    </>
   );
 };

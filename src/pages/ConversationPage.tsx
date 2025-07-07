@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConversation } from '@/hooks/useConversation';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
 
 const ConversationPage: React.FC = () => {
-    const { userId, conversationId } = useParams<{ userId?: string, conversationId?: string }>();
+    const { conversationId } = useParams<{ conversationId?: string }>();
     const { user } = useSupabaseAuth();
     const navigate = useNavigate();
     const [conv, setConv] = React.useState<any>(null);
@@ -19,9 +20,9 @@ const ConversationPage: React.FC = () => {
 
     // Enhanced logging!
     useEffect(() => {
-      console.log('[ConversationPage] useParams', { userId, conversationId });
+      console.log('[ConversationPage] useParams', { conversationId });
       console.log('[ConversationPage] Current user:', user);
-    }, [userId, conversationId, user]);
+    }, [conversationId, user]);
 
     React.useEffect(() => {
       (async () => {
@@ -49,9 +50,9 @@ const ConversationPage: React.FC = () => {
       console.log("[ConversationPage] receiverId for DM:", receiverId);
     }
 
-    console.log('[ConversationPage] Calling useConversation:', { convId, userId, receiverId });
+    console.log('[ConversationPage] Calling useConversation:', { convId, receiverId });
     const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(
-      convId ?? userId,
+      convId,
       receiverId
     );
     const [newMessage, setNewMessage] = useState('');
@@ -70,7 +71,7 @@ const ConversationPage: React.FC = () => {
       if (newMessage.trim()) {
         console.log('[ConversationPage] Sending message:', {
             content: newMessage,
-            conversation_id: convId ?? userId,
+            conversation_id: convId,
             receiver_id: receiverId,
             sender_id: user?.id
         });
@@ -84,6 +85,29 @@ const ConversationPage: React.FC = () => {
     };
     
     const loadingAny = loading || messagesLoading;
+
+    // Get display info for conversation header
+    const getConversationDisplayInfo = () => {
+      if (!conv) return { title: 'Conversation', subtitle: '' };
+      
+      if (conv.is_group) {
+        return {
+          title: conv.title || 'Group Chat',
+          subtitle: `${conv.participants?.length || 0} members`,
+          avatar: null
+        };
+      } else {
+        // Direct message - show the other person's info
+        const otherParticipant = conv.participants?.find((p: any) => p.profiles?.id !== user?.id);
+        return {
+          title: otherParticipant?.profiles?.username || 'Direct Message',
+          subtitle: 'Direct Message',
+          avatar: otherParticipant?.profiles?.avatar
+        };
+      }
+    };
+
+    const displayInfo = getConversationDisplayInfo();
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -100,29 +124,23 @@ const ConversationPage: React.FC = () => {
                             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
                                 Back
                             </Button>
-                            {conv.is_group ? (
-                              <>
-                                <Avatar>
-                                  <AvatarFallback>{conv.title?.slice(0,2).toUpperCase() || "G"}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <CardTitle className="text-lg">{conv.title}</CardTitle>
-                                  <div className="text-xs text-muted-foreground">
-                                    {conv.participants.map((p: any) => p.profiles?.username).filter(Boolean).join(", ")}
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <Avatar>
-                                  <AvatarImage src={conv.participants?.[0]?.profiles?.avatar || undefined} />
-                                  <AvatarFallback>{conv.participants?.[0]?.profiles?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <CardTitle className="text-lg">{conv.participants?.[0]?.profiles?.username ?? "User"}</CardTitle>
-                                </div>
-                              </>
-                            )}
+                            <Avatar>
+                              {displayInfo.avatar ? (
+                                <AvatarImage src={displayInfo.avatar} />
+                              ) : null}
+                              <AvatarFallback>
+                                {conv.is_group ? 
+                                  (conv.title?.slice(0,2).toUpperCase() || "G") : 
+                                  displayInfo.title.charAt(0).toUpperCase()
+                                }
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <CardTitle className="text-lg">{displayInfo.title}</CardTitle>
+                              <div className="text-xs text-muted-foreground">
+                                {displayInfo.subtitle}
+                              </div>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">

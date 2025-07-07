@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
@@ -23,7 +24,7 @@ const getUserConversations = async (userId: string) => {
 
   if (ids.length === 0) {
     console.warn('[getUserConversations] No conversation_participants found for userId:', userId);
-    return []; // <-- fix: don't query with an empty id list
+    return [];
   }
 
   // Now fetch conversation details if there are any
@@ -80,12 +81,18 @@ const createGroupConversation = async ({
     .single();
   if (error) throw error;
 
-  // Add participants (must include the creator)
-  const participantsToAdd = participantIds.map(id => ({
+  // Add participants including the creator
+  const allParticipantIds = [...new Set([creatorId, ...participantIds])]; // Use Set to avoid duplicates
+  const participantsToAdd = allParticipantIds.map(id => ({
     conversation_id: conversation.id,
     user_id: id
   }));
-  await supabase.from('conversation_participants').insert(participantsToAdd);
+  
+  const { error: participantError } = await supabase
+    .from('conversation_participants')
+    .insert(participantsToAdd);
+  
+  if (participantError) throw participantError;
 
   return conversation;
 };
