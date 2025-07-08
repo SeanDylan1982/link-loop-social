@@ -86,7 +86,7 @@ const UserProfilePage: React.FC = () => {
           <div className="max-w-2xl mx-auto space-y-6">
             <Card>
               <CardContent className="p-0">
-                {/* Banner Image */}
+                {/* Banner Image with overlay profile info */}
                 <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
                   {profile.banner ? (
                     <img 
@@ -97,28 +97,35 @@ const UserProfilePage: React.FC = () => {
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600" />
                   )}
+                  
+                  {/* Overlay gradient for better text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  
+                  {/* Profile info overlay */}
+                  <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
+                    <div className="flex items-end space-x-4">
+                      <Avatar className="w-24 h-24 border-4 border-white">
+                        <AvatarImage src={profile.avatar || undefined} />
+                        <AvatarFallback className="text-2xl text-gray-900">
+                          {profile.username?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="pb-2">
+                        <h2 className="text-2xl font-bold text-white drop-shadow-lg">{profile.username}</h2>
+                        <p className="text-white/90 drop-shadow">{profile.email}</p>
+                        <p className="text-sm text-white/80 drop-shadow">
+                          Joined {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 items-end pb-2">
+                      {renderSendMessageButton()}
+                      {renderFriendControls()}
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="p-6">
-                  <div className="flex items-center space-x-6 mb-6">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src={profile.avatar || undefined} />
-                    <AvatarFallback className="text-2xl">
-                      {profile.username?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold">{profile.username}</h2>
-                    <p className="text-gray-600">{profile.email}</p>
-                     <p className="text-sm text-gray-500">
-                        Joined {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    {renderSendMessageButton()}
-                    {renderFriendControls()}
-                  </div>
-                </div>
                   <div>
                     <h3 className="font-medium text-gray-700">Bio</h3>
                     <p className="text-gray-600">{profile.bio || 'No bio added yet.'}</p>

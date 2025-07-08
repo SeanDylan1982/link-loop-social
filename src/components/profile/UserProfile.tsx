@@ -65,11 +65,8 @@ export const UserProfile: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
-          {/* Banner Image */}
+          {/* Banner Image with overlay profile info */}
           <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
             {bannerPreview ? (
               <img 
@@ -80,24 +77,29 @@ export const UserProfile: React.FC = () => {
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600" />
             )}
-          </div>
-          
-          <div className="p-6">
-            <div className="flex items-center space-x-6 mb-6">
-              <Avatar className="w-24 h-24">
+            
+            {/* Overlay gradient for better text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            
+            {/* Profile info overlay */}
+            <div className="absolute bottom-4 left-4 right-4 flex items-end space-x-4 text-white">
+              <Avatar className="w-24 h-24 border-4 border-white">
                 <AvatarImage src={avatarPreview || undefined} />
-                <AvatarFallback className="text-2xl">
+                <AvatarFallback className="text-2xl text-gray-900">
                   {profile?.username?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold">{profile?.username}</h2>
-                <p className="text-gray-600">{profile?.email}</p>
-                <p className="text-sm text-gray-500">
+              <div className="flex-1 pb-2">
+                <h2 className="text-2xl font-bold text-white drop-shadow-lg">{profile?.username}</h2>
+                <p className="text-white/90 drop-shadow">{profile?.email}</p>
+                <p className="text-sm text-white/80 drop-shadow">
                   Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
                 </p>
               </div>
             </div>
+          </div>
+          
+          <div className="p-6">
 
             {editing ? (
               <div className="space-y-4">
