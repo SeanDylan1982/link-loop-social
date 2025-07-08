@@ -8,6 +8,7 @@ interface Profile {
   username: string;
   email: string;
   avatar?: string;
+  banner?: string;
   bio?: string;
   created_at: string;
   updated_at: string;
@@ -20,7 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>, avatarFile?: File | null) => Promise<void>;
+  updateProfile: (updates: Partial<Profile>, avatarFile?: File | null, bannerFile?: File | null) => Promise<void>;
   loading: boolean;
 }
 
@@ -129,7 +130,7 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const updateProfile = async (updates: Partial<Profile>, avatarFile?: File | null) => {
+  const updateProfile = async (updates: Partial<Profile>, avatarFile?: File | null, bannerFile?: File | null) => {
     if (!user) throw new Error('No user logged in');
 
     const profileUpdates = { ...updates };
@@ -149,6 +150,23 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       profileUpdates.avatar = urlData.publicUrl;
+    }
+
+    if (bannerFile) {
+      const fileExt = bannerFile.name.split('.').pop();
+      const fileName = `banner-${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, bannerFile, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      profileUpdates.banner = urlData.publicUrl;
     }
 
     const { error } = await supabase

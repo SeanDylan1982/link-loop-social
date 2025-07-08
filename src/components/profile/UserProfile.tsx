@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,12 +18,15 @@ export const UserProfile: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
       setUsername(profile.username || '');
       setBio(profile.bio || '');
       setAvatarPreview(profile.avatar || null);
+      setBannerPreview(profile.banner || null);
     }
   }, [profile]);
 
@@ -42,9 +44,10 @@ export const UserProfile: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateProfile({ username, bio }, avatarFile);
+      await updateProfile({ username, bio }, avatarFile, bannerFile);
       setEditing(false);
       setAvatarFile(null);
+      setBannerFile(null);
       toast({ title: "Profile updated successfully!" });
     } catch (error) {
       toast({ 
@@ -65,87 +68,120 @@ export const UserProfile: React.FC = () => {
         <CardHeader>
           <CardTitle>Profile</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-6 mb-6">
-            <Avatar className="w-24 h-24">
-              <AvatarImage src={avatarPreview || undefined} />
-              <AvatarFallback className="text-2xl">
-                {profile?.username?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold">{profile?.username}</h2>
-              <p className="text-gray-600">{profile?.email}</p>
-              <p className="text-sm text-gray-500">
-                Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
-              </p>
-            </div>
+        <CardContent className="p-0">
+          {/* Banner Image */}
+          <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+            {bannerPreview ? (
+              <img 
+                src={bannerPreview} 
+                alt="Profile banner" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600" />
+            )}
           </div>
+          
+          <div className="p-6">
+            <div className="flex items-center space-x-6 mb-6">
+              <Avatar className="w-24 h-24">
+                <AvatarImage src={avatarPreview || undefined} />
+                <AvatarFallback className="text-2xl">
+                  {profile?.username?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold">{profile?.username}</h2>
+                <p className="text-gray-600">{profile?.email}</p>
+                <p className="text-sm text-gray-500">
+                  Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
+                </p>
+              </div>
+            </div>
 
-          {editing ? (
-            <div className="space-y-4">
-               <div className="space-y-2">
-                <Label htmlFor="avatar">Profile Picture</Label>
-                <Input
-                  id="avatar"
-                  type="file"
-                  accept="image/png, image/jpeg"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      const file = e.target.files[0];
-                      setAvatarFile(file);
-                      setAvatarPreview(URL.createObjectURL(file));
+            {editing ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="banner">Banner Image</Label>
+                  <Input
+                    id="banner"
+                    type="file"
+                    accept="image/png, image/jpeg"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        setBannerFile(file);
+                        setBannerPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="file:text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="avatar">Profile Picture</Label>
+                  <Input
+                    id="avatar"
+                    type="file"
+                    accept="image/png, image/jpeg"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        setAvatarFile(file);
+                        setAvatarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="file:text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell us about yourself..."
+                    className="min-h-[100px]"
+                  />
+                </div>
+                <div className="flex space-x-2">
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    setEditing(false);
+                    setAvatarFile(null);
+                    setBannerFile(null);
+                    if (profile) {
+                      setAvatarPreview(profile.avatar || null);
+                      setBannerPreview(profile.banner || null);
+                      setUsername(profile.username || '');
+                      setBio(profile.bio || '');
                     }
-                  }}
-                  className="file:text-foreground"
-                />
+                  }}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell us about yourself..."
-                  className="min-h-[100px]"
-                />
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save'}
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  setEditing(false);
-                  setAvatarFile(null);
-                  if (profile) {
-                    setAvatarPreview(profile.avatar || null);
-                    setUsername(profile.username || '');
-                    setBio(profile.bio || '');
-                  }
-                }}>
-                  Cancel
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium text-gray-700">Bio</h3>
+                  <p className="text-gray-600">{profile?.bio || 'No bio added yet.'}</p>
+                </div>
+                <Button onClick={() => setEditing(true)}>
+                  Edit Profile
                 </Button>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium text-gray-700">Bio</h3>
-                <p className="text-gray-600">{profile?.bio || 'No bio added yet.'}</p>
-              </div>
-              <Button onClick={() => setEditing(true)}>
-                Edit Profile
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
 

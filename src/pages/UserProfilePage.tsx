@@ -85,8 +85,22 @@ const UserProfilePage: React.FC = () => {
         ) : (
           <div className="max-w-2xl mx-auto space-y-6">
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-6 mb-6">
+              <CardContent className="p-0">
+                {/* Banner Image */}
+                <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+                  {profile.banner ? (
+                    <img 
+                      src={profile.banner} 
+                      alt="Profile banner" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600" />
+                  )}
+                </div>
+                
+                <div className="p-6">
+                  <div className="flex items-center space-x-6 mb-6">
                   <Avatar className="w-24 h-24">
                     <AvatarImage src={profile.avatar || undefined} />
                     <AvatarFallback className="text-2xl">
@@ -105,10 +119,11 @@ const UserProfilePage: React.FC = () => {
                     {renderFriendControls()}
                   </div>
                 </div>
-                 <div>
+                  <div>
                     <h3 className="font-medium text-gray-700">Bio</h3>
                     <p className="text-gray-600">{profile.bio || 'No bio added yet.'}</p>
                   </div>
+                </div>
               </CardContent>
             </Card>
             <Card>

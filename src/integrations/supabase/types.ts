@@ -79,6 +79,13 @@ export type Database = {
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conversation_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       conversations: {
@@ -190,7 +197,7 @@ export type Database = {
           created_at: string | null
           id: string
           read: boolean | null
-          receiver_id: string
+          receiver_id: string | null
           sender_id: string
         }
         Insert: {
@@ -199,7 +206,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           read?: boolean | null
-          receiver_id: string
+          receiver_id?: string | null
           sender_id: string
         }
         Update: {
@@ -208,7 +215,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           read?: boolean | null
-          receiver_id?: string
+          receiver_id?: string | null
           sender_id?: string
         }
         Relationships: [
@@ -306,6 +313,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar: string | null
+          banner: string | null
           bio: string | null
           created_at: string | null
           email: string
@@ -315,6 +323,7 @@ export type Database = {
         }
         Insert: {
           avatar?: string | null
+          banner?: string | null
           bio?: string | null
           created_at?: string | null
           email: string
@@ -324,6 +333,7 @@ export type Database = {
         }
         Update: {
           avatar?: string | null
+          banner?: string | null
           bio?: string | null
           created_at?: string | null
           email?: string
@@ -477,6 +487,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_message_notification: {
+        Args: {
+          recipient_id: string
+          message_id: string
+          message_content: string
+        }
+        Returns: undefined
+      }
       is_topic_member: {
         Args: { _topic_id: string; _user_id: string }
         Returns: boolean
