@@ -10,6 +10,10 @@ import UserProfilePage from "./pages/UserProfilePage";
 import ConversationPage from "./pages/ConversationPage";
 import PostPage from "./pages/PostPage";
 import NotificationsPage from './pages/NotificationsPage';
+import AdminPage from './pages/AdminPage';
+import AdminSettingsPage from './pages/AdminSettingsPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 const queryClient = new QueryClient();
 
@@ -28,7 +32,11 @@ const App = () => (
             <Route
               path="/conversation/:conversationId"
               element={<ConversationPage />}
-            />{" "}
+            />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

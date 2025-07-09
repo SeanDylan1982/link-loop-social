@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Navbar } from '@/components/layout/Navbar';
-import { Heart, Share2, ArrowLeft } from 'lucide-react';
+import { Heart, Share2, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useEffect, useState } from 'react';
 import { SupabaseComments } from '@/components/feed/SupabaseComments';
@@ -29,16 +29,23 @@ interface PostData {
 
 const PostPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
+  const [searchParams] = useSearchParams();
   const { user } = useSupabaseAuth();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
   const [likeLoading, setLikeLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const navigate = useNavigate();
+  
+  const fromAdminReports = searchParams.get('from') === 'admin-reports';
+  const reportReason = searchParams.get('reason');
+  const reportDetails = searchParams.get('details');
 
   const fetchPost = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    // Try regular posts first
+    let { data, error } = await supabase
       .from('posts')
       .select(`
         *,
@@ -49,6 +56,12 @@ const PostPage: React.FC = () => {
       `)
       .eq('id', postId)
       .maybeSingle();
+
+    // Topic posts are also stored in the posts table with a topic_id
+    // So if we didn't find it, it might not exist at all
+    if (!data) {
+      console.log('[PostPage] Post not found in database');
+    }
 
     setPost(data);
     setLoading(false);
@@ -156,9 +169,42 @@ const PostPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar activeTab="" onTabChange={tab => navigate(`/?tab=${tab}`)} />
       <div className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
-          <ArrowLeft className="mr-2" size={18} /> Back
+        <Button 
+          variant="ghost" 
+          onClick={() => {
+            if (fromAdminReports) {
+              navigate('/admin');
+            } else {
+              // Go back to previous page or home if no history
+              window.history.length > 1 ? navigate(-1) : navigate('/');
+            }
+          }} 
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2" size={18} /> 
+          {fromAdminReports ? 'Back to Admin Reports' : 'Back'}
         </Button>
+        
+        {fromAdminReports && reportReason && (
+          <Card className="max-w-2xl mx-auto mb-4 border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-red-800">Reported Post</p>
+                  <p className="text-sm text-red-700 mt-1">
+                    <strong>Reason:</strong> {decodeURIComponent(reportReason)}
+                  </p>
+                  {reportDetails && (
+                    <p className="text-sm text-red-700 mt-1">
+                      <strong>Details:</strong> {decodeURIComponent(reportDetails)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <div className="flex items-center gap-3">

@@ -10,7 +10,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { Home, Users, MessageSquare, User, LogOut } from 'lucide-react';
+import { useAdmin } from '@/hooks/useAdmin';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { Home, Users, MessageSquare, User, LogOut, Shield, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { NotificationIcon } from '@/components/notifications/NotificationIcon';
@@ -23,6 +25,8 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
   const { profile, logout } = useSupabaseAuth();
+  const { isAdmin } = useAdmin();
+  const { settings } = useSiteSettings();
   const navigate = useNavigate();
 
   const navItems = [
@@ -49,9 +53,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-12">
-            <h1 className="text-2xl font-bold text-blue-600 dark:text-primary">
-              SocialConnect
-            </h1>
+            <div className="flex items-center gap-2">
+              {settings.siteLogo && (
+                <img src={settings.siteLogo} alt="Logo" className="h-8 w-8 object-contain" />
+              )}
+              <h1 className="text-2xl font-bold text-blue-600 dark:text-primary">
+                {settings.siteName}
+              </h1>
+            </div>
             <div className="hidden md:flex space-x-12">
               {navItems.slice(0, 3).map((item) => (
                 <Button
@@ -90,6 +99,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Admin Settings</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />

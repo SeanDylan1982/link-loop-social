@@ -35,6 +35,7 @@ export const usePosts = () => {
             avatar
           )
         `)
+        .is('topic_id', null)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -80,7 +81,8 @@ export const usePosts = () => {
         .insert([{
           user_id: user.id,
           content,
-          image: imageUrl
+          image: imageUrl,
+          topic_id: null
         }])
         .select(`
           *,

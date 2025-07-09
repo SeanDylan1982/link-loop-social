@@ -8,41 +8,34 @@ import { useNotificationSender } from '@/hooks/useNotificationSender';
 export type FriendshipStatus = 'friends' | 'request_sent' | 'request_received' | 'not_friends';
 
 const fetchFriendshipStatus = async (currentUserId: string, profileId: string): Promise<FriendshipStatus> => {
-    const { data: friendship } = await supabase
-        .from('friendships')
-        .select('*')
-        .or(`(user1_id.eq.${currentUserId},user2_id.eq.${profileId}),(user1_id.eq.${profileId},user2_id.eq.${currentUserId})`)
-        .maybeSingle();
-
-    if (friendship) {
-        return 'friends';
+    try {
+        // Get current user's profile to check friends list
+        const { data: currentUserProfile } = await supabase
+            .from('profiles')
+            .select('friends')
+            .eq('id', currentUserId)
+            .single();
+        
+        console.log('[FriendshipStatus] Current user friends:', currentUserProfile?.friends);
+        console.log('[FriendshipStatus] Checking if', profileId, 'is in friends list');
+        
+        // Check if profileId is in the friends array
+        if (currentUserProfile?.friends && Array.isArray(currentUserProfile.friends)) {
+            const isFriend = currentUserProfile.friends.includes(profileId);
+            console.log('[FriendshipStatus] Is friend?', isFriend);
+            if (isFriend) {
+                return 'friends';
+            }
+        }
+        
+        // For now, return not_friends if not in friends list
+        // You can add friend request logic here later if needed
+        return 'not_friends';
+        
+    } catch (error) {
+        console.error('[FriendshipStatus] Error checking friendship:', error);
+        return 'not_friends';
     }
-
-    const { data: sentRequest } = await supabase
-        .from('friend_requests')
-        .select('*')
-        .eq('sender_id', currentUserId)
-        .eq('receiver_id', profileId)
-        .eq('status', 'pending')
-        .maybeSingle();
-    
-    if (sentRequest) {
-        return 'request_sent';
-    }
-
-    const { data: receivedRequest } = await supabase
-        .from('friend_requests')
-        .select('*')
-        .eq('sender_id', profileId)
-        .eq('receiver_id', currentUserId)
-        .eq('status', 'pending')
-        .maybeSingle();
-
-    if(receivedRequest) {
-        return 'request_received';
-    }
-    
-    return 'not_friends';
 };
 
 export const useFriendshipStatus = (profileId: string | undefined) => {

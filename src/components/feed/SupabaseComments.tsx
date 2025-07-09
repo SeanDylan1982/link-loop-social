@@ -12,6 +12,7 @@ import { useNotificationSender } from "@/hooks/useNotificationSender";
 interface Props {
   postId: string;
   postType?: 'post' | 'topic_post';
+  showOnlyRecent?: boolean;
 }
 
 interface Profile {
@@ -20,7 +21,7 @@ interface Profile {
   avatar?: string;
 }
 
-export const SupabaseComments: React.FC<Props> = ({ postId, postType = 'post' }) => {
+export const SupabaseComments: React.FC<Props> = ({ postId, postType = 'post', showOnlyRecent = false }) => {
   const { comments, loading, addComment } = useSupabaseComments(postId);
   const { user, profile } = useSupabaseAuth();
   const [commentText, setCommentText] = useState("");
@@ -34,9 +35,8 @@ export const SupabaseComments: React.FC<Props> = ({ postId, postType = 'post' })
   // Fetch post owner info to send notifications
   useEffect(() => {
     const fetchPostOwner = async () => {
-      const tableName = postType === 'topic_post' ? 'topic_posts' : 'posts';
       const { data, error } = await supabase
-        .from(tableName)
+        .from('posts')
         .select('user_id')
         .eq('id', postId)
         .single();
@@ -109,8 +109,8 @@ export const SupabaseComments: React.FC<Props> = ({ postId, postType = 'post' })
 
   return (
     <div className="pt-4">
-      <h4 className="text-sm font-semibold mb-2">Comments</h4>
-      {user && (
+      {!showOnlyRecent && <h4 className="text-sm font-semibold mb-2">Comments</h4>}
+      {!showOnlyRecent && user && (
         <form onSubmit={handleSubmit} className="flex items-start space-x-2 mb-4">
           <Avatar className="w-8 h-8 mt-1">
             <AvatarImage src={profile?.avatar} />
@@ -138,7 +138,7 @@ export const SupabaseComments: React.FC<Props> = ({ postId, postType = 'post' })
         ) : comments.length === 0 ? (
           <p className="text-gray-400 text-sm">No comments yet.</p>
         ) : (
-          comments.map((comment) => {
+          (showOnlyRecent ? comments.slice(-1) : comments).map((comment) => {
             const commentProfile = profiles[comment.user_id];
             return (
               <div key={comment.id} className="flex space-x-2 items-start p-2 bg-gray-50 rounded-lg">

@@ -19,8 +19,8 @@ const getUserConversations = async (userId: string) => {
   const { data: participationRows, error: partErr } = await supabase
     .from('conversation_participants')
     .select('conversation_id')
-    .eq('user_id', userId);
-  
+    .eq('user_id', userId,)
+    
   if (partErr) {
     console.error('[getUserConversations] participationRows error:', partErr);
     throw partErr;
@@ -41,7 +41,7 @@ const getUserConversations = async (userId: string) => {
       *,
       participants:conversation_participants (
         user_id,
-        profiles:profiles (
+        profiles!conversation_participants_user_id_fkey (
           id, username, avatar
         )
       ),
@@ -60,16 +60,38 @@ const getUserConversations = async (userId: string) => {
   
   console.log('[getUserConversations] conversations fetch data:', data);
 
-  // Flatten for UI - include conversations even if participant data is missing
-  return (data || []).map((c: any) => ({
-    ...c,
-    participants: (c.participants ?? []).map((p: any) => ({
-      id: p.profiles?.id || p.user_id,
-      username: p.profiles?.username || 'Unknown User',
-      avatar: p.profiles?.avatar,
-    })),
-    lastMessage: c.last_message?.[0]?.content || null,
-  })) as Conversation[];
+  // Flatten for UI and ensure we have proper profile data
+  const conversationsWithProfiles = await Promise.all(
+    (data || []).map(async (c: any) => {
+      // Get participant profiles separately if not loaded properly
+      const participantIds = (c.participants || []).map((p: any) => p.user_id).filter(Boolean);
+      
+      let participantProfiles = [];
+      if (participantIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, avatar')
+          .in('id', participantIds);
+        
+        participantProfiles = participantIds.map(id => {
+          const profile = profiles?.find(p => p.id === id);
+          return {
+            id: id,
+            username: profile?.username || 'Unknown User',
+            avatar: profile?.avatar
+          };
+        });
+      }
+      
+      return {
+        ...c,
+        participants: participantProfiles,
+        lastMessage: c.last_message?.[0]?.content || null,
+      };
+    })
+  );
+  
+  return conversationsWithProfiles as Conversation[];
 };
 
 // Fetch all profiles except yours
@@ -171,7 +193,12 @@ const getOrCreateDirectConversation = async ({
   userId,
   friendId,
 }: { userId: string, friendId: string }) => {
-  console.log('[getOrCreateDirectConversation] Finding/creating DM between:', userId, 'and', friendId);
+  console.log('[getOrCreateDirectConversation] Finding/creating DM between:', userId, 'and', friendId)
+  
+  if (userId === friendId) {
+    console.error('[getOrCreateDirectConversation] Cannot create DM with yourself');
+    throw new Error('Cannot create DM with yourself');
+  }
   
   // 1. Search for existing direct conversation with both participants, is_group false
   const { data: candidateConvs, error } = await supabase
@@ -224,7 +251,7 @@ const getOrCreateDirectConversation = async ({
     throw participantError;
   }
   
-  // Create notification for the friend about new conversation
+  // Send initial message to start the conversation
   try {
     const { data: senderProfile } = await supabase
       .from('profiles')
@@ -232,13 +259,33 @@ const getOrCreateDirectConversation = async ({
       .eq('id', userId)
       .single();
     
+    const initialMessage = `👋 ${senderProfile?.username || 'Someone'} started a conversation with you!`;
+    
+    // Insert the initial message
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversation.id,
+        sender_id: userId,
+        receiver_id: friendId,
+        content: initialMessage,
+        created_at: new Date().toISOString()
+      });
+    
+    if (messageError) {
+      console.error('[getOrCreateDirectConversation] error creating initial message:', messageError);
+    } else {
+      console.log('[getOrCreateDirectConversation] Initial message created');
+    }
+    
+    // Create notification for the friend
     const { error: notifError } = await supabase
       .from('notifications')
       .insert({
         user_id: friendId,
         type: 'message',
         related_id: conversation.id,
-        content: `${senderProfile?.username || 'Someone'} started a conversation with you`,
+        content: initialMessage,
       });
     
     if (notifError) {
@@ -246,11 +293,11 @@ const getOrCreateDirectConversation = async ({
     } else {
       console.log('[getOrCreateDirectConversation] Notification created for friend:', friendId);
     }
-  } catch (notifErr) {
-    console.error('[getOrCreateDirectConversation] Notification creation failed:', notifErr);
+  } catch (err) {
+    console.error('[getOrCreateDirectConversation] Error creating initial message/notification:', err);
   }
   
-  console.log('[getOrCreateDirectConversation] Created new DM:', conversation.id);
+  console.log('[getOrCreateDirectConversation] Created new DM:', conversation.id, ' and ', + friendId);
   
   // Force immediate refresh for both users
   setTimeout(() => {
@@ -265,12 +312,21 @@ export const useConversations = () => {
   const { user } = useSupabaseAuth();
   const queryClient = useQueryClient();
 
-  const { data: conversations, isLoading } = useQuery({
+  const { data: conversations, isLoading, refetch } = useQuery({
     queryKey: ['conversations', user?.id],
     queryFn: () => getUserConversations(user!.id),
     enabled: !!user,
-    staleTime: 30000, // Cache for 30 seconds to avoid too frequent refetches
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 100, // Don't cache to ensure fresh data
   });
+
+  // Force refresh conversations when hook is used
+  React.useEffect(() => {
+    if (user) {
+      console.log('[useConversations] Force refreshing conversations for user:', user.id);
+      refetch();
+    }
+  }, [user?.id, refetch]);
 
 
 

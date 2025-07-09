@@ -28,6 +28,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Users, MessageSquare } from "lucide-react";
+import { Footer } from "@/components/layout/Footer";
+import { SystemMessage } from "@/components/notifications/SystemMessage";
+import { CookiesModal } from "@/components/modals/CookiesModal";
+import { useCookieConsent } from "@/hooks/useCookieConsent";
 
 const MainApp: React.FC = () => {
   const { user, profile, loading } = useSupabaseAuth();
@@ -35,6 +39,7 @@ const MainApp: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "home";
   const [activeTab, setActiveTab] = useState(initialTab);
+  const { showCookieModal, acceptCookies, declineCookies } = useCookieConsent();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [selectedTopicId, setSelectedTopicId] = useState<string>();
   const navigate = useNavigate();
@@ -126,10 +131,11 @@ const MainApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background">
+    <div className="min-h-screen bg-gray-50 dark:bg-background flex flex-col">
+      <SystemMessage />
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       <SupabaseSearch />
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 flex-1 pb-[120px]">
         {activeTab === "home" && (
           <div className="flex gap-6">
             <TopicsSidebar
@@ -256,6 +262,12 @@ const MainApp: React.FC = () => {
           </div>
         )}
       </div>
+      <Footer />
+      <CookiesModal 
+        open={showCookieModal}
+        onAccept={acceptCookies}
+        onDecline={declineCookies}
+      />
     </div>
   );
 };

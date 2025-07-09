@@ -27,23 +27,9 @@ export const NotificationsList: React.FC = () => {
     // Navigate based on notification type
     switch (notification.type) {
       case 'message':
-        // For messages, find the conversation that contains this message
+        // For messages, related_id is the conversation_id
         if (notification.related_id) {
-          try {
-            const { data: message } = await supabase
-              .from('messages')
-              .select('conversation_id')
-              .eq('id', notification.related_id)
-              .single();
-            
-            if (message?.conversation_id) {
-              navigate(`/conversation/${message.conversation_id}`);
-            } else {
-              console.error('Message not found for notification:', notification.related_id);
-            }
-          } catch (error) {
-            console.error('Error finding message conversation:', error);
-          }
+          navigate(`/conversation/${notification.related_id}`);
         }
         break;
       case 'friend_request':

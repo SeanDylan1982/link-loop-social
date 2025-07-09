@@ -36,7 +36,7 @@ const ConversationPage: React.FC = () => {
               *,
               participants:conversation_participants (
                 user_id,
-                profiles:profiles!conversation_participants_user_id_fkey (
+                profiles:profiles (
                   id, username, avatar
                 )
               )

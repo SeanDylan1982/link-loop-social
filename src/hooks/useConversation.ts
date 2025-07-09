@@ -34,7 +34,7 @@ const sendMessage = async (
 ) => {
   console.log('[sendMessage] Sending:', { currentUserId, conversationId, content, receiverId });
   
-  // If no receiverId provided, try to find it from conversation participants
+  // FIRST: Find receiverId if not provided
   let finalReceiverId = receiverId;
   if (!finalReceiverId) {
     const { data: participants } = await supabase
@@ -48,32 +48,14 @@ const sendMessage = async (
       console.log('[sendMessage] Found receiverId from participants:', finalReceiverId);
     }
   }
-  
-  const { data: message, error } = await supabase
-    .from('messages')
-    .insert({
-      sender_id: currentUserId,
-      receiver_id: finalReceiverId || null,
-      conversation_id: conversationId,
-      content,
-    })
-    .select()
-    .single();
 
-  if (error) {
-    console.error('[sendMessage] Error inserting message:', error);
-    throw error;
-  }
-
-  console.log('[sendMessage] Message created:', message);
-
-  // For direct messages, ensure we have a receiver_id
+  // SECOND: Ensure we have a receiver_id for direct messages
   if (!finalReceiverId) {
     console.error('[sendMessage] No receiver_id found for direct message');
     throw new Error('Cannot send message: recipient not found');
   }
 
-  // Ensure receiver is a participant in the conversation
+  // THIRD: Ensure receiver is a participant in the conversation
   const { error: participantError } = await supabase
     .from('conversation_participants')
     .upsert({
@@ -85,8 +67,48 @@ const sendMessage = async (
 
   if (participantError) {
     console.error('[sendMessage] Error adding receiver as participant:', participantError);
-  } else {
-    console.log('[sendMessage] Ensured receiver is participant:', finalReceiverId);
+    throw participantError;
+  }
+  
+  console.log('[sendMessage] Ensured receiver is participant:', finalReceiverId);
+
+  // FOURTH: Now create the message with confirmed receiverId
+  const { data: message, error } = await supabase
+    .from('messages')
+    .insert({
+      sender_id: currentUserId,
+      receiver_id: finalReceiverId,
+      conversation_id: conversationId,
+      content,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[sendMessage] Error inserting message:', error);
+    throw error;
+  }
+
+  console.log('[sendMessage] Message created with receiverId:', message);
+
+  // FIFTH: Create notification for receiver
+  try {
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: finalReceiverId,
+        type: 'message',
+        related_id: conversationId,
+        content: `New message: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+      });
+    
+    if (notifError) {
+      console.error('[sendMessage] Error creating notification:', notifError);
+    } else {
+      console.log('[sendMessage] Notification created for receiver:', finalReceiverId);
+    }
+  } catch (notifErr) {
+    console.error('[sendMessage] Notification creation failed:', notifErr);
   }
 
   // Update conversation timestamp to trigger real-time updates

@@ -60,6 +60,23 @@ export const useConversationsRealtime = () => {
           queryClient.refetchQueries({ queryKey: ['conversations'] });
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          console.log('[useConversationsRealtime] New message inserted:', payload);
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          queryClient.refetchQueries({ queryKey: ['conversations'] });
+          // Also refresh specific conversation
+          if (payload.new && typeof payload.new === 'object' && 'conversation_id' in payload.new) {
+            queryClient.invalidateQueries({ queryKey: ['conversation', payload.new.conversation_id] });
+          }
+        }
+      )
       .subscribe();
 
     // Store the subscription

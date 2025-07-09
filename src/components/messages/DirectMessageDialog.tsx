@@ -102,6 +102,7 @@ export const DirectMessageDialog: React.FC<DirectMessageDialogProps> = ({
                 friends.map((friend) => (
                   <Button
                     key={friend.id}
+                    value={friend.id}
                     variant="ghost"
                     className="w-full justify-start p-3 h-auto"
                     onClick={() => handleStartConversation(friend)}

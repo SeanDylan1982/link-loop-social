@@ -95,7 +95,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
                   
                   const displayName = conversation.is_group 
                     ? conversation.title 
-                    : otherParticipant?.username || 'Direct Message';
+                    : otherParticipant?.friendId || 'Direct Message';
                   
                   const participantCount = conversation.participants.length;
                   const lastUpdated = new Date(conversation.updated_at);

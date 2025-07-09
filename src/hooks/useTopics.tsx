@@ -55,38 +55,41 @@ export const useTopics = () => {
       // Get additional stats for each topic
       const topicsWithStats = await Promise.all(
         (data || []).map(async (topic) => {
-          // Get post count and last post date
+          // Get post count and last post date from database
           const { data: posts, count: postCount } = await supabase
-            .from('topic_posts')
+            .from('posts')
             .select('created_at', { count: 'exact' })
             .eq('topic_id', topic.id)
             .order('created_at', { ascending: false })
             .limit(1);
+          
+          const lastPostDate = posts && posts.length > 0 ? posts[0].created_at : null;
 
-          // Get member count
-          const { count: memberCount } = await supabase
-            .from('topic_memberships')
-            .select('*', { count: 'exact', head: true })
-            .eq('topic_id', topic.id);
-
-          // Check if current user is a member
+          // Get member count and check membership in one query
+          let memberCount = 0;
           let isMember = false;
-          if (user) {
-            const { data: membership } = await supabase
+          
+          try {
+            const { data: memberships, count } = await supabase
               .from('topic_memberships')
-              .select('id')
-              .eq('topic_id', topic.id)
-              .eq('user_id', user.id)
-              .single();
+              .select('user_id', { count: 'exact' })
+              .eq('topic_id', topic.id);
             
-            isMember = !!membership;
+            memberCount = count || 0;
+            if (user && memberships) {
+              isMember = memberships.some(m => m.user_id === user.id);
+            }
+          } catch (membershipError) {
+            console.warn('Could not fetch membership data for topic:', topic.id, membershipError);
+            memberCount = 0;
+            isMember = false;
           }
 
           return {
             ...topic,
             post_count: postCount || 0,
             member_count: memberCount || 0,
-            last_post_date: posts && posts.length > 0 ? posts[0].created_at : null,
+            last_post_date: lastPostDate,
             is_member: isMember
           };
         })
@@ -192,6 +195,17 @@ export const useTopics = () => {
 
   useEffect(() => {
     fetchTopics();
+    
+    // Listen for topic stats updates
+    const handleStatsUpdate = () => {
+      fetchTopics();
+    };
+    
+    window.addEventListener('topicStatsUpdate', handleStatsUpdate);
+    
+    return () => {
+      window.removeEventListener('topicStatsUpdate', handleStatsUpdate);
+    };
   }, [user]);
 
   return {

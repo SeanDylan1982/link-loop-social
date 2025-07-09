@@ -17,9 +17,9 @@ export const useTopicPosts = (topicId?: string) => {
     }
 
     try {
-      // First get the posts
+      // Fetch posts for this topic from database using topic_id
       const { data: postsData, error: postsError } = await supabase
-        .from('topic_posts')
+        .from('posts')
         .select('*')
         .eq('topic_id', topicId)
         .order('created_at', { ascending: false });
@@ -80,12 +80,12 @@ export const useTopicPosts = (topicId?: string) => {
       }
 
       const { data, error } = await supabase
-        .from('topic_posts')
+        .from('posts')
         .insert([{
-          topic_id: topicId,
           user_id: user.id,
           content,
-          image: imageUrl
+          image: imageUrl,
+          topic_id: topicId
         }])
         .select()
         .single();
@@ -113,6 +113,11 @@ export const useTopicPosts = (topicId?: string) => {
       if (onPostCreated) {
         onPostCreated();
       }
+      
+      // Trigger a refresh of topics to update stats
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('topicStatsUpdate'));
+      }, 100);
     } catch (error) {
       console.error('Error creating topic post:', error);
       toast({ title: "Error", description: "Failed to create post", variant: "destructive" });
@@ -122,7 +127,7 @@ export const useTopicPosts = (topicId?: string) => {
   const updateTopicPost = async (postId: string, updates: Partial<TopicPost>) => {
     try {
       const { data, error } = await supabase
-        .from('topic_posts')
+        .from('posts')
         .update(updates)
         .eq('id', postId)
         .select()
