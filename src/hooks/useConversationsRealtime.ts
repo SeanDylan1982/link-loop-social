@@ -42,7 +42,7 @@ export const useConversationsRealtime = () => {
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
           queryClient.refetchQueries({ queryKey: ['conversations'] });
           // Also invalidate specific user queries if we can identify them
-          if (payload.new?.user_id) {
+          if (payload.new && typeof payload.new === 'object' && 'user_id' in payload.new) {
             queryClient.invalidateQueries({ queryKey: ['conversations', payload.new.user_id] });
           }
         }

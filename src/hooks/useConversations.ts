@@ -5,7 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Tables } from '@/integrations/supabase/types';
 
-export type Conversation = Tables<'conversations'> & { participants: { id: string, username: string, avatar: string | null }[] };
+export type Conversation = Tables<'conversations'> & { 
+  participants: { id: string, username: string, avatar: string | null }[];
+  lastMessage?: string | null;
+};
 export type ConversationParticipant = Tables<'conversation_participants'>;
 
 // Fetch all conversations for a user
