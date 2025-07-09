@@ -4,11 +4,14 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useFriendshipStatus } from '@/hooks/useFriendshipStatus';
 import { useConversations } from '@/hooks/useConversations';
+import { useSupabaseComments } from '@/hooks/useSupabaseComments';
+import { usePosts } from '@/hooks/usePosts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Navbar } from '@/components/layout/Navbar';
-import { UserPlus, Clock, MessageCircle } from 'lucide-react';
+import { UserPlus, Clock, MessageCircle, Link as LinkIcon, Globe, Github, Twitter, Instagram, Linkedin, Facebook, Youtube } from 'lucide-react';
 
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -16,6 +19,8 @@ const UserProfilePage: React.FC = () => {
   const { profile, posts, loading: profileLoading, error } = useUserProfile(userId);
   const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading } = useFriendshipStatus(userId);
   const { getOrCreateDM } = useConversations();
+  const { comments } = useSupabaseComments('');
+  const { posts: allPosts } = usePosts();
   const navigate = useNavigate();
 
   const handleNavChange = (tab: string) => {
@@ -23,6 +28,17 @@ const UserProfilePage: React.FC = () => {
   };
 
   const loading = authLoading || profileLoading;
+  
+  const userComments = comments?.filter((comment) => comment.user_id === userId);
+  const userLikes = allPosts?.filter((post) => post.likes?.includes(userId || ''));
+  
+  const getSocialIcon = (iconName: string) => {
+    const icons: { [key: string]: any } = {
+      Facebook, Twitter, Instagram, Linkedin, Github, Youtube, Globe, LinkIcon
+    };
+    const IconComponent = icons[iconName] || LinkIcon;
+    return <IconComponent className="w-4 h-4" />;
+  };
 
   // Show the Send Message button if users are friends (do not show for own profile)
   const renderSendMessageButton = () => {
@@ -126,43 +142,174 @@ const UserProfilePage: React.FC = () => {
                 </div>
                 
                 <div className="p-6">
-                  <div>
-                    <h3 className="font-medium text-gray-700">Bio</h3>
-                    <p className="text-gray-600">{profile.bio || 'No bio added yet.'}</p>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium text-gray-700">Bio</h3>
+                      <p className="text-gray-600">{profile.bio || 'No bio added yet.'}</p>
+                    </div>
+                    
+                    {/* Social Links */}
+                    {profile.social_links && Array.isArray(profile.social_links) && profile.social_links.length > 0 && (
+                      <div>
+                        <h3 className="font-medium text-gray-700 mb-2">Social Links</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.social_links.map((link: any, index: number) => (
+                            <a
+                              key={index}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors"
+                            >
+                              {getSocialIcon(link.icon)}
+                              {link.platform}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader>
-                <CardTitle>Posts ({posts?.length || 0})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {posts && posts.length > 0 ? (
-                  <div className="space-y-4">
-                    {posts.map((post) => (
-                      <div
-                        key={post.id}
-                        className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
-                        onClick={() => navigate(`/post/${post.id}`)}
-                      >
-                        <p className="mb-2">{post.content}</p>
-                        {post.image && (
-                          <img src={post.image} alt="Post content" className="w-full rounded-lg mb-4 max-h-96 object-cover"/>
-                        )}
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{post.likes?.length || 0} likes</span>
-                          <span>{post.shares || 0} shares</span>
-                          <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                        </div>
+              <CardContent className="p-6">
+                <Tabs defaultValue="about" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="about">About</TabsTrigger>
+                    <TabsTrigger value="posts">Posts ({posts?.length || 0})</TabsTrigger>
+                    <TabsTrigger value="likes">Likes ({userLikes?.length || 0})</TabsTrigger>
+                    <TabsTrigger value="comments">Comments ({userComments?.length || 0})</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="about" className="mt-6">
+                    <div className="space-y-4">
+                      {[
+                        { label: 'Full Name', value: profile.full_name },
+                        { label: 'Nickname', value: profile.nickname },
+                        { label: 'Address', value: profile.address },
+                        { label: 'School', value: profile.school },
+                        { label: 'University', value: profile.university },
+                        { label: 'Workplace', value: profile.workplace }
+                      ].map(({ label, value }) => (
+                        value && (
+                          <div key={label}>
+                            <h4 className="font-medium text-gray-700">{label}</h4>
+                            <p className="text-gray-600">{value}</p>
+                          </div>
+                        )
+                      ))}
+                      
+                      {[
+                        { label: 'Hobbies', items: profile.hobbies },
+                        { label: 'Interests', items: profile.interests },
+                        { label: 'Likes', items: profile.likes },
+                        { label: 'Dislikes', items: profile.dislikes },
+                        { label: 'Achievements', items: profile.achievements },
+                        { label: 'Honors', items: profile.honors },
+                        { label: 'Awards', items: profile.awards }
+                      ].map(({ label, items }) => (
+                        items && Array.isArray(items) && items.length > 0 && (
+                          <div key={label}>
+                            <h4 className="font-medium text-gray-700">{label}</h4>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {items.map((item: string, index: number) => (
+                                <span key={index} className="px-2 py-1 bg-gray-100 rounded text-sm text-gray-600">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="posts" className="mt-6">
+                    {posts && posts.length > 0 ? (
+                      <div className="space-y-4">
+                        {posts.map((post) => (
+                          <div
+                            key={post.id}
+                            className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                            onClick={() => navigate(`/post/${post.id}`)}
+                          >
+                            <p className="mb-2">{post.content}</p>
+                            {post.image && (
+                              <img src={post.image} alt="Post content" className="w-full rounded-lg mb-4 max-h-96 object-cover"/>
+                            )}
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span>{post.likes?.length || 0} likes</span>
+                              <span>{post.shares || 0} shares</span>
+                              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-8">
-                    This user hasn't posted anything yet.
-                  </p>
-                )}
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">
+                        This user hasn't posted anything yet.
+                      </p>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="likes" className="mt-6">
+                    {userLikes && userLikes.length > 0 ? (
+                      <div className="space-y-4">
+                        {userLikes.map((post) => (
+                          <div 
+                            key={post.id} 
+                            className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                            onClick={() => navigate(`/post/${post.id}`)}
+                          >
+                            <div className="flex items-start gap-3">
+                              {post.image && (
+                                <img src={post.image} alt="Post thumbnail" className="w-16 h-16 rounded object-cover flex-shrink-0"/>
+                              )}
+                              <div className="flex-1">
+                                <p className="mb-2 line-clamp-2">{post.content}</p>
+                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                  <span>{post.likes?.length || 0} likes</span>
+                                  <span>{post.shares || 0} shares</span>
+                                  <span>{post.created_at ? new Date(post.created_at).toLocaleDateString() : ""}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">
+                        This user hasn't liked any posts yet.
+                      </p>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="comments" className="mt-6">
+                    {userComments && userComments.length > 0 ? (
+                      <div className="space-y-4">
+                        {userComments.map((comment) => (
+                          <div 
+                            key={comment.id} 
+                            className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                            onClick={() => navigate(`/post/${comment.post_id}`)}
+                          >
+                            <p className="mb-2">{comment.content}</p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span>{comment.likes?.length || 0} likes</span>
+                              <span>{comment.created_at ? new Date(comment.created_at).toLocaleDateString() : ""}</span>
+                              <span>on post</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">
+                        This user hasn't commented on any posts yet.
+                      </p>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>

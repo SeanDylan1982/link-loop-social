@@ -312,34 +312,76 @@ export type Database = {
       }
       profiles: {
         Row: {
+          achievements: string[] | null
+          address: string | null
           avatar: string | null
+          awards: string[] | null
           banner: string | null
           bio: string | null
           created_at: string | null
+          dislikes: string[] | null
           email: string
+          full_name: string | null
+          hobbies: string[] | null
+          honors: string[] | null
           id: string
+          interests: string[] | null
+          likes: string[] | null
+          nickname: string | null
+          school: string | null
+          social_links: Json | null
+          university: string | null
           updated_at: string | null
           username: string
+          workplace: string | null
         }
         Insert: {
+          achievements?: string[] | null
+          address?: string | null
           avatar?: string | null
+          awards?: string[] | null
           banner?: string | null
           bio?: string | null
           created_at?: string | null
+          dislikes?: string[] | null
           email: string
+          full_name?: string | null
+          hobbies?: string[] | null
+          honors?: string[] | null
           id: string
+          interests?: string[] | null
+          likes?: string[] | null
+          nickname?: string | null
+          school?: string | null
+          social_links?: Json | null
+          university?: string | null
           updated_at?: string | null
           username: string
+          workplace?: string | null
         }
         Update: {
+          achievements?: string[] | null
+          address?: string | null
           avatar?: string | null
+          awards?: string[] | null
           banner?: string | null
           bio?: string | null
           created_at?: string | null
+          dislikes?: string[] | null
           email?: string
+          full_name?: string | null
+          hobbies?: string[] | null
+          honors?: string[] | null
           id?: string
+          interests?: string[] | null
+          likes?: string[] | null
+          nickname?: string | null
+          school?: string | null
+          social_links?: Json | null
+          university?: string | null
           updated_at?: string | null
           username?: string
+          workplace?: string | null
         }
         Relationships: []
       }

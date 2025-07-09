@@ -12,6 +12,20 @@ interface Profile {
   bio?: string;
   created_at: string;
   updated_at: string;
+  full_name?: string;
+  nickname?: string;
+  address?: string;
+  school?: string;
+  university?: string;
+  workplace?: string;
+  hobbies?: string[];
+  interests?: string[];
+  likes?: string[];
+  dislikes?: string[];
+  achievements?: string[];
+  honors?: string[];
+  awards?: string[];
+  social_links?: { platform: string; url: string; icon: string }[];
 }
 
 interface AuthContextType {
@@ -80,7 +94,10 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return;
       }
 
-      setProfile(data);
+      setProfile({
+        ...data,
+        social_links: Array.isArray(data.social_links) ? data.social_links as { platform: string; url: string; icon: string }[] : []
+      });
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
