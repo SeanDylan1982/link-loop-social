@@ -57,10 +57,10 @@ const ConversationPage: React.FC = () => {
       const participantProfiles = conv.participants as any[];
       console.log('[ConversationPage] All participants:', participantProfiles);
       const other = participantProfiles?.find((p) => {
-        const profileId = p.profiles?.id || p.user_id;
+        const profileId = p.id || p.user_id;
         return profileId && profileId !== user.id;
       });
-      receiverId = other?.profiles?.id || other?.user_id;
+      receiverId = other?.id || other?.user_id;
       console.log("[ConversationPage] receiverId for DM:", receiverId);
     }
 
@@ -127,11 +127,11 @@ const ConversationPage: React.FC = () => {
         };
       } else {
         // Direct message - show the other person's info
-        const otherParticipant = conv.participants?.find((p: any) => p.profiles?.id !== user?.id);
+        const otherParticipant = conv.participants?.find((p: any) => p.id !== user?.id);
         return {
-          title: otherParticipant?.profiles?.username || 'Direct Message',
+          title: otherParticipant?.username || 'Direct Message',
           subtitle: 'Direct Message',
-          avatar: otherParticipant?.profiles?.avatar
+          avatar: otherParticipant?.avatar
         };
       }
     };

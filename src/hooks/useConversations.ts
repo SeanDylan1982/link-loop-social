@@ -267,7 +267,6 @@ const getOrCreateDirectConversation = async ({
       .insert({
         conversation_id: conversation.id,
         sender_id: userId,
-        receiver_id: friendId,
         content: initialMessage,
         created_at: new Date().toISOString()
       });

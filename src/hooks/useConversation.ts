@@ -72,12 +72,11 @@ const sendMessage = async (
   
   console.log('[sendMessage] Ensured receiver is participant:', finalReceiverId);
 
-  // FOURTH: Now create the message with confirmed receiverId
+  // FOURTH: Now create the message
   const { data: message, error } = await supabase
     .from('messages')
     .insert({
       sender_id: currentUserId,
-      receiver_id: finalReceiverId,
       conversation_id: conversationId,
       content,
     })
