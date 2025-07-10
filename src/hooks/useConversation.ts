@@ -137,13 +137,20 @@ export const useConversation = (
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: (content: string) =>
-      sendMessage(user!.id, conversationId!, content, receiverId),
-    onSuccess: () => {
+    mutationFn: (content: string) => {
+      // Log the receiverId being used for debugging
+      console.log('[useConversation] Sending message with receiverId:', receiverId);
+      return sendMessage(user!.id, conversationId!, content, receiverId);
+    },
+    onSuccess: (data) => {
+      console.log('[useConversation] Message sent successfully:', data);
       queryClient.invalidateQueries({ queryKey });
       // Update conversation lists for both users
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
+    onError: (error) => {
+      console.error('[useConversation] Error sending message:', error);
+    }
   });
 
   useEffect(() => {

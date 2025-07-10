@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConversation } from '@/hooks/useConversation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,12 +13,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ConversationPage: React.FC = () => {
     const { conversationId } = useParams<{ conversationId?: string }>();
+    const [searchParams] = useSearchParams();
     const { user } = useSupabaseAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [conv, setConv] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
     const convId = conversationId || undefined;
+    
+    // Get receiverId from URL if available
+    const receiverIdFromUrl = searchParams.get('receiver');
+    if (receiverIdFromUrl) {
+      console.log('[ConversationPage] Found receiver ID in URL:', receiverIdFromUrl);
+    }
 
     // Enhanced logging!
     useEffect(() => {
@@ -52,17 +59,50 @@ const ConversationPage: React.FC = () => {
     }, [convId]);
 
     // Infer receiverId for DMs:
-    let receiverId: string | undefined = undefined;
-    if (conv && !conv.is_group && user) {
+    // First try to use receiverId from URL if available
+    let receiverId: string | undefined = receiverIdFromUrl || undefined;
+    
+    // If not in URL, try to infer from conversation participants
+    if (!receiverId && conv && !conv.is_group && user) {
       const participantProfiles = conv.participants as any[];
       console.log('[ConversationPage] All participants:', participantProfiles);
+      
+      // Try multiple paths to find the other participant's ID
       const other = participantProfiles?.find((p) => {
-        const profileId = p.id || p.user_id;
-        return profileId && profileId !== user.id;
+        // Check all possible paths where the ID might be stored
+        const possibleIds = [
+          p.user_id,                  // Direct user_id
+          p.id,                      // Direct id
+          p.profiles?.id,            // Nested profiles.id
+          p.profile?.id              // Alternate nested profile.id
+        ].filter(Boolean);           // Remove undefined/null values
+        
+        // Log all possible IDs for debugging
+        console.log('[ConversationPage] Possible IDs for participant:', possibleIds);
+        
+        // Check if any ID is valid and not the current user
+        return possibleIds.some(id => id && id !== user.id);
       });
-      receiverId = other?.id || other?.user_id;
-      console.log("[ConversationPage] receiverId for DM:", receiverId);
+      
+      // Extract the receiver ID from the found participant
+      if (other) {
+        // Try all possible paths in order of likelihood
+        receiverId = other.user_id || other.profiles?.id || other.id || other.profile?.id;
+        console.log("[ConversationPage] Found receiverId from participants:", receiverId);
+      } else {
+        console.error("[ConversationPage] Could not find receiver in participants:", participantProfiles);
+      }
     }
+    
+    // If still not found, try localStorage backup
+    if (!receiverId && convId) {
+      const conversationMappings = JSON.parse(localStorage.getItem('conversationReceivers') || '{}');
+      receiverId = conversationMappings[convId];
+      console.log("[ConversationPage] Using backup receiverId from localStorage:", receiverId);
+    }
+    
+    // Final log of the receiverId we'll use
+    console.log("[ConversationPage] Final receiverId for DM:", receiverId);
 
     console.log('[ConversationPage] Calling useConversation:', { convId, receiverId });
     const { messages, isLoading: messagesLoading, sendMessage, isSending } = useConversation(

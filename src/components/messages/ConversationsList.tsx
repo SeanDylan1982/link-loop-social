@@ -23,9 +23,30 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
 
   console.log('[ConversationsList] Rendering with conversations:', conversations, 'loading:', isLoading);
 
-  const handleConversationClick = (conversationId: string) => {
-    console.log('[ConversationsList] Navigating to conversation:', conversationId);
-    navigate(`/conversation/${conversationId}`);
+  const handleConversationClick = (conversation: any) => {
+    console.log('[ConversationsList] Navigating to conversation:', conversation.id);
+    
+    // Find the other participant (receiver) in this conversation
+    let receiverId;
+    if (!conversation.is_group && conversation.participants?.length > 0) {
+      const otherParticipant = conversation.participants.find((p: any) => p.id !== user?.id);
+      receiverId = otherParticipant?.id;
+      console.log('[ConversationsList] Found receiver ID:', receiverId);
+    }
+    
+    // If we couldn't find the receiver ID in participants, try the localStorage backup
+    if (!receiverId) {
+      const conversationMappings = JSON.parse(localStorage.getItem('conversationReceivers') || '{}');
+      receiverId = conversationMappings[conversation.id];
+      console.log('[ConversationsList] Using backup receiver ID from localStorage:', receiverId);
+    }
+    
+    // Include the receiver ID in the URL if we have it
+    if (receiverId) {
+      navigate(`/conversation/${conversation.id}?receiver=${receiverId}`);
+    } else {
+      navigate(`/conversation/${conversation.id}`);
+    }
   };
 
   if (isLoading) {
@@ -111,7 +132,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
                           ? 'bg-green-50 border-green-200 hover:bg-green-100' 
                           : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
                       }`}
-                      onClick={() => handleConversationClick(conversation.id)}
+                      onClick={() => handleConversationClick(conversation)}
                     >
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">

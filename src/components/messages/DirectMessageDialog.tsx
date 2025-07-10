@@ -66,9 +66,22 @@ export const DirectMessageDialog: React.FC<DirectMessageDialogProps> = ({
   const handleStartConversation = async (friend: Friend) => {
     try {
       console.log('[DirectMessageDialog] Starting conversation with:', friend.username);
+      console.log('[DirectMessageDialog] Friend ID:', friend.id);
+      
       const conversation = await getOrCreateDM(friend.id);
+      console.log('[DirectMessageDialog] Conversation created/found:', conversation);
+      
+      // Store the conversation-to-friend mapping for recovery
+      const conversationMappings = JSON.parse(localStorage.getItem('conversationReceivers') || '{}');
+      conversationMappings[conversation.id] = friend.id;
+      localStorage.setItem('conversationReceivers', JSON.stringify(conversationMappings));
+      
       onOpenChange(false);
-      onConversationCreated(conversation.id);
+      // Pass the full conversation object with the receiver ID
+      onConversationCreated({
+        ...conversation,
+        participants: [{ id: friend.id, username: friend.username }]
+      });
     } catch (error) {
       console.error('[DirectMessageDialog] Error creating/finding conversation:', error);
       setError('Failed to start conversation');
