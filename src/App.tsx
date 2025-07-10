@@ -7,7 +7,7 @@ import SupabaseIndex from "./pages/SupabaseIndex";
 import NotFound from "./pages/NotFound";
 import { SupabaseAuthProvider } from "./hooks/useSupabaseAuth";
 import UserProfilePage from "./pages/UserProfilePage";
-import ConversationPage from "./pages/ConversationPage";
+import { SimpleConversationPage } from "./pages/SimpleConversationPage";
 import PostPage from "./pages/PostPage";
 import NotificationsPage from './pages/NotificationsPage';
 import AdminPage from './pages/AdminPage';
@@ -31,7 +31,7 @@ const App = () => (
             <Route path="/post/:postId" element={<PostPage />} />
             <Route
               path="/conversation/:conversationId"
-              element={<ConversationPage />}
+              element={<SimpleConversationPage />}
             />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />

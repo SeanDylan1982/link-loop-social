@@ -10,8 +10,7 @@ import { MessagesList } from "@/components/messages/MessagesList";
 import { usePosts } from "@/hooks/usePosts";
 import { useSearchParams } from "react-router-dom";
 import { SupabaseSearch } from "@/components/search/SupabaseSearch";
-import { ConversationsList } from "@/components/messages/ConversationsList";
-import { CreateGroupConversation } from "@/components/messages/CreateGroupConversation";
+import { SimpleConversationsList } from "@/components/messages/SimpleConversationsList";
 import { useNavigate } from "react-router-dom";
 import {
   FeedFilters,
@@ -250,15 +249,7 @@ const MainApp: React.FC = () => {
         {activeTab === "friends" && <SupabaseFriendsList />}
         {activeTab === "messages" && (
           <div className="max-w-2xl mx-auto">
-            <ConversationsList onCreateGroup={() => setShowCreateGroup(true)} />
-            <CreateGroupConversation
-              open={showCreateGroup}
-              onOpenChange={setShowCreateGroup}
-              afterCreated={(conversationId) => {
-                console.log('CONVERSATION ID - ', conversationId);
-                navigate(`/conversation/${conversationId}`);
-              }}
-            />
+            <SimpleConversationsList />
           </div>
         )}
       </div>
