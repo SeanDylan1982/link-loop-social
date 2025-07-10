@@ -1,73 +1,134 @@
-# Welcome to your Lovable project
+# Link Loop Social
 
-## Project info
+A modern, feature-rich social networking platform built with React, TypeScript, and Supabase.
 
-**URL**: https://lovable.dev/projects/0db85fb5-8266-4d90-82f1-03ddfdd6ccc1
+## Overview
 
-## How can I edit this code?
+Link Loop Social is a full-featured social networking application that allows users to connect with friends, share posts, join topic discussions, and communicate through direct messages. The platform provides a seamless experience across devices with a responsive design and real-time updates.
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+### User Management
+- **Authentication**: Secure login/signup with email and password
+- **User Profiles**: Customizable profiles with avatars, bio, and social links
+- **Friend System**: Send/accept friend requests and manage connections
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/0db85fb5-8266-4d90-82f1-03ddfdd6ccc1) and start prompting.
+### Content Sharing
+- **Posts**: Create, like, and share posts with text and images
+- **Comments**: Engage in discussions through comments on posts
+- **Topics**: Join topic-based communities and participate in focused discussions
 
-Changes made via Lovable will be committed automatically to this repo.
+### Messaging
+- **Direct Messages**: Private conversations between users
+- **Group Chats**: Create group conversations with multiple participants
+- **Real-time Updates**: Instant message delivery and notifications
 
-**Use your preferred IDE**
+### Administration
+- **Admin Dashboard**: Comprehensive tools for platform management
+- **Content Moderation**: Review and manage reported content
+- **User Management**: Suspend users and send system-wide messages
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Technical Architecture
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Frontend
+- **React**: Component-based UI library
+- **TypeScript**: Type-safe JavaScript
+- **TanStack Query**: Data fetching and state management
+- **Shadcn UI**: Component library for consistent design
+- **Lucide Icons**: Modern icon set
 
-Follow these steps:
+### Backend
+- **Supabase**: Backend-as-a-Service platform
+  - Authentication
+  - PostgreSQL Database
+  - Storage for images
+  - Real-time subscriptions
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Database Schema
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Core Tables
+- `profiles`: User profile information
+- `posts`: User-generated content
+- `comments`: Comments on posts
+- `topics`: Topic categories
+- `friendships`: Connections between users
+- `friend_requests`: Pending connection requests
+- `notifications`: System and user notifications
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Messaging Tables
+- `conversations`: Chat threads
+- `conversation_participants`: Users in conversations
+- `messages`: Individual messages
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### Administration Tables
+- `post_reports`: Reported content
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v16+)
+- npm or yarn
+- Supabase account
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/link-loop-social.git
+cd link-loop-social
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Set up environment variables:
+Create a `.env.local` file with your Supabase credentials:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-**Use GitHub Codespaces**
+4. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Key Components
 
-## What technologies are used for this project?
+### Home Feed
+The main timeline displaying posts from all users, with the ability to like, comment, and share.
 
-This project is built with:
+### Topics
+Topic-based communities where users can join discussions on specific subjects.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Messaging
+Real-time chat functionality for private conversations between users.
 
-## How can I deploy this project?
+### Notifications
+System for alerting users about interactions, messages, and friend requests.
 
-Simply open [Lovable](https://lovable.dev/projects/0db85fb5-8266-4d90-82f1-03ddfdd6ccc1) and click on Share -> Publish.
+### Admin Dashboard
+Tools for platform management, including content moderation and user administration.
 
-## Can I connect a custom domain to my Lovable project?
+## Best Practices
 
-Yes, you can!
+- **Component Structure**: Organized by feature and functionality
+- **Custom Hooks**: Encapsulated logic for reusability
+- **TypeScript**: Strong typing for better developer experience
+- **Real-time Updates**: Leveraging Supabase subscriptions for instant updates
+- **Error Handling**: Comprehensive error management with user feedback
+- **Responsive Design**: Mobile-first approach for all device sizes
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## License
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+[MIT License](LICENSE)
+
+## Contact
+
+For questions or support, please contact [your-email@example.com](mailto:your-email@example.com).
