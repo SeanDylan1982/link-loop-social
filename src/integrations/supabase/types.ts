@@ -280,6 +280,7 @@ export type Database = {
           image: string | null
           likes: string[] | null
           shares: number | null
+          topic_id: string | null
           user_id: string
         }
         Insert: {
@@ -289,6 +290,7 @@ export type Database = {
           image?: string | null
           likes?: string[] | null
           shares?: number | null
+          topic_id?: string | null
           user_id: string
         }
         Update: {
@@ -298,9 +300,17 @@ export type Database = {
           image?: string | null
           likes?: string[] | null
           shares?: number | null
+          topic_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_user_id_fkey"
             columns: ["user_id"]

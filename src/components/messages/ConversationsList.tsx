@@ -23,29 +23,36 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
 
   console.log('[ConversationsList] Rendering with conversations:', conversations, 'loading:', isLoading);
 
-  const handleConversationClick = (conversation: any) => {
-    console.log('[ConversationsList] Navigating to conversation:', conversation.id);
+  const handleConversationClick = (conversationOrId: any) => {
+    // Handle both conversation objects and conversation ID strings
+    const conversationId = typeof conversationOrId === 'string' ? conversationOrId : conversationOrId.id;
+    console.log('[ConversationsList] Navigating to conversation:', conversationId);
     
     // Find the other participant (receiver) in this conversation
     let receiverId;
-    if (!conversation.is_group && conversation.participants?.length > 0) {
-      const otherParticipant = conversation.participants.find((p: any) => p.id !== user?.id);
-      receiverId = otherParticipant?.id;
-      console.log('[ConversationsList] Found receiver ID:', receiverId);
+    
+    // If it's a full conversation object, try to get receiver from participants
+    if (typeof conversationOrId === 'object' && conversationOrId.participants) {
+      const conversation = conversationOrId;
+      if (!conversation.is_group && conversation.participants?.length > 0) {
+        const otherParticipant = conversation.participants.find((p: any) => p.id !== user?.id);
+        receiverId = otherParticipant?.id;
+        console.log('[ConversationsList] Found receiver ID from participants:', receiverId);
+      }
     }
     
     // If we couldn't find the receiver ID in participants, try the localStorage backup
     if (!receiverId) {
       const conversationMappings = JSON.parse(localStorage.getItem('conversationReceivers') || '{}');
-      receiverId = conversationMappings[conversation.id];
+      receiverId = conversationMappings[conversationId];
       console.log('[ConversationsList] Using backup receiver ID from localStorage:', receiverId);
     }
     
     // Include the receiver ID in the URL if we have it
     if (receiverId) {
-      navigate(`/conversation/${conversation.id}?receiver=${receiverId}`);
+      navigate(`/conversation/${conversationId}?receiver=${receiverId}`);
     } else {
-      navigate(`/conversation/${conversation.id}`);
+      navigate(`/conversation/${conversationId}`);
     }
   };
 
@@ -116,7 +123,7 @@ export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGr
                   
                   const displayName = conversation.is_group 
                     ? conversation.title 
-                    : otherParticipant?.friendId || 'Direct Message';
+                    : otherParticipant?.username || 'Direct Message';
                   
                   const participantCount = conversation.participants.length;
                   const lastUpdated = new Date(conversation.updated_at);

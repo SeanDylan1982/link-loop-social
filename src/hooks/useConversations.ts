@@ -200,28 +200,35 @@ const getOrCreateDirectConversation = async ({
     throw new Error('Cannot create DM with yourself');
   }
   
-  // 1. Search for existing direct conversation with both participants, is_group false
-  const { data: candidateConvs, error } = await supabase
+  // 1. More efficient search: use a single query with JOIN to find existing DM
+  const { data: existingConv, error } = await supabase
     .from('conversations')
-    .select('id')
-    .eq('is_group', false);
+    .select(`
+      id,
+      conversation_participants!inner (user_id)
+    `)
+    .eq('is_group', false)
+    .eq('conversation_participants.user_id', userId);
 
   if (error) {
     console.error('[getOrCreateDirectConversation] error fetching conversations:', error);
     throw error;
   }
   
-  // For each, check if both userId and friendId exist in conversation_participants (exactly two participants)
-  for (const conv of candidateConvs || []) {
-    // Fetch participants for this conversation
-    const { data: parts } = await supabase
-      .from('conversation_participants')
-      .select('user_id')
-      .eq('conversation_id', conv.id);
-    const participantIds = (parts || []).map(p => p.user_id);
-    if (participantIds.length === 2 && participantIds.includes(userId) && participantIds.includes(friendId)) {
-      console.log('[getOrCreateDirectConversation] Found existing DM:', conv.id);
-      return { id: conv.id };
+  // Check if any of these conversations also has the friend as participant
+  if (existingConv && existingConv.length > 0) {
+    for (const conv of existingConv) {
+      const { data: friendParticipant } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conv.id)
+        .eq('user_id', friendId)
+        .maybeSingle();
+      
+      if (friendParticipant) {
+        console.log('[getOrCreateDirectConversation] Found existing DM:', conv.id);
+        return { id: conv.id };
+      }
     }
   }
   
@@ -316,7 +323,7 @@ export const useConversations = () => {
     queryFn: () => getUserConversations(user!.id),
     enabled: !!user,
     staleTime: 0, // Always fetch fresh data
-    cacheTime: 100, // Don't cache to ensure fresh data
+    gcTime: 100, // Don't cache to ensure fresh data
   });
 
   // Force refresh conversations when hook is used

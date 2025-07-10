@@ -77,11 +77,8 @@ export const DirectMessageDialog: React.FC<DirectMessageDialogProps> = ({
       localStorage.setItem('conversationReceivers', JSON.stringify(conversationMappings));
       
       onOpenChange(false);
-      // Pass the full conversation object with the receiver ID
-      onConversationCreated({
-        ...conversation,
-        participants: [{ id: friend.id, username: friend.username }]
-      });
+      // Pass just the conversation ID as a string
+      onConversationCreated(conversation.id);
     } catch (error) {
       console.error('[DirectMessageDialog] Error creating/finding conversation:', error);
       setError('Failed to start conversation');
