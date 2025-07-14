@@ -6,13 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useSimpleMessaging } from '@/hooks/useSimpleMessaging';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { MessageCircle, Plus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const SimpleConversationsList: React.FC = () => {
   const { conversations, friends, loading, createDirectConversation } = useSimpleMessaging();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showFriendsDialog, setShowFriendsDialog] = useState(false);
 

@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
 // Add profile object type to Post interface
@@ -22,26 +21,16 @@ interface Post {
 export const usePosts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          profiles:profiles (
-            username,
-            avatar
-          )
-        `)
-        .is('topic_id', null)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching posts:', error);
-        return;
-      }
+      setLoading(true);
+      const res = await fetch('/api/posts', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Failed to fetch posts');
+      const data = await res.json();
       setPosts(data || []);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -55,48 +44,23 @@ export const usePosts = () => {
       toast({ title: "Error", description: "You must be logged in to create a post", variant: "destructive" });
       return;
     }
-
     try {
-      let imageUrl: string | undefined = undefined;
-
+      const formData = new FormData();
+      formData.append('content', content);
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('post-images')
-          .upload(filePath, imageFile);
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(filePath);
-        imageUrl = urlData.publicUrl;
+        formData.append('image', imageFile);
       }
 
-      const { data, error } = await supabase
-        .from('posts')
-        .insert([{
-          user_id: user.id,
-          content,
-          image: imageUrl,
-          topic_id: null
-        }])
-        .select(`
-          *,
-          profiles:profiles (
-            username,
-            avatar
-          )
-        `)
-        .single();
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
 
-      if (error) {
-        throw error;
-      }
-
+      if (!res.ok) throw new Error('Failed to create post');
+      const data = await res.json();
       setPosts([data, ...posts]);
       toast({ title: "Post created successfully!" });
     } catch (error) {
@@ -107,23 +71,16 @@ export const usePosts = () => {
 
   const updatePost = async (postId: string, updates: Partial<Post>) => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .update(updates)
-        .eq('id', postId)
-        .select(`
-          *,
-          profiles:profiles (
-            username,
-            avatar
-          )
-        `)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update post');
+      const data = await res.json();
       setPosts(posts.map(post =>
         post.id === postId ? { ...post, ...data } : post
       ));

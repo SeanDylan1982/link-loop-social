@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ImageIcon, X } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TopicCreatePostProps {
   onPostCreated: (content: string, imageFile?: File | null) => void;
@@ -16,7 +16,7 @@ export const TopicCreatePost: React.FC<TopicCreatePostProps> = ({ onPostCreated 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { profile } = useSupabaseAuth();
+  const { user } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +53,8 @@ export const TopicCreatePost: React.FC<TopicCreatePostProps> = ({ onPostCreated 
       <CardHeader>
         <CardTitle className="flex items-center space-x-3">
           <Avatar className="w-8 h-8">
-            <AvatarImage src={profile?.avatar} />
-            <AvatarFallback>{profile?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <span>Share your thoughts...</span>
         </CardTitle>

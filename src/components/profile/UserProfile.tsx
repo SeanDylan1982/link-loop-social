@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
-import { useSupabaseComments } from '@/hooks/useSupabaseComments';
 import { toast } from '@/hooks/use-toast';
 import { Link, Globe, Github, Twitter, Instagram, Linkedin, Facebook, Youtube, Plus, X } from 'lucide-react';
+import { request } from '@/api/api';
 
 export const UserProfile: React.FC = () => {
-  const { user, profile, updateProfile, loading } = useSupabaseAuth();
+  const { user, updateUser } = useAuth();
   const { posts } = usePosts();
-  const { comments } = useSupabaseComments('');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
@@ -53,29 +54,43 @@ export const UserProfile: React.FC = () => {
   const [socialUrl, setSocialUrl] = useState('');
 
   useEffect(() => {
-    if (profile) {
-      setUsername(profile.username || '');
-      setBio(profile.bio || '');
-      setAvatarPreview(profile.avatar || null);
-      setBannerPreview(profile.banner || null);
-      setFullName(profile.full_name || '');
-      setNickname(profile.nickname || '');
-      setAddress(profile.address || '');
-      setSchool(profile.school || '');
-      setUniversity(profile.university || '');
-      setWorkplace(profile.workplace || '');
-      setHobbies(profile.hobbies || []);
-      setInterests(profile.interests || []);
-      setLikes(profile.likes || []);
-      setDislikes(profile.dislikes || []);
-      setAchievements(profile.achievements || []);
-      setHonors(profile.honors || []);
-      setAwards(profile.awards || []);
-      setSocialLinks(profile.social_links || []);
+    if (user?.profile) {
+      setUsername(user.profile.username || '');
+      setBio(user.profile.bio || '');
+      setAvatarPreview(user.profile.avatar || null);
+      setBannerPreview(user.profile.banner || null);
+      setFullName(user.profile.full_name || '');
+      setNickname(user.profile.nickname || '');
+      setAddress(user.profile.address || '');
+      setSchool(user.profile.school || '');
+      setUniversity(user.profile.university || '');
+      setWorkplace(user.profile.workplace || '');
+      setHobbies(user.profile.hobbies || []);
+      setInterests(user.profile.interests || []);
+      setLikes(user.profile.likes || []);
+      setDislikes(user.profile.dislikes || []);
+      setAchievements(user.profile.achievements || []);
+      setHonors(user.profile.honors || []);
+      setAwards(user.profile.awards || []);
+      setSocialLinks(user.profile.social_links || []);
     }
-  }, [profile]);
+  }, [user]);
 
-  if (loading || !profile) {
+  useEffect(() => {
+    async function fetchComments() {
+      setLoading(true);
+      try {
+        const data = await request(`/comments/post/${user?.id}`);
+        setComments(data);
+      } catch (e) {
+        setComments([]);
+      }
+      setLoading(false);
+    }
+    if (user?.id) fetchComments();
+  }, [user?.id]);
+
+  if (!user) {
     return (
       <div className="min-h-[200px] flex items-center justify-center">
         <div className="text-center">
@@ -89,7 +104,7 @@ export const UserProfile: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateProfile({ 
+      await updateUser({ 
         username, 
         bio,
         full_name: fullName,
@@ -167,7 +182,6 @@ export const UserProfile: React.FC = () => {
   };
 
   const userPosts = posts?.filter((post) => post.user_id === user?.id);
-  const userComments = comments?.filter((comment) => comment.user_id === user?.id);
   const userLikes = posts?.filter((post) => post.likes?.includes(user?.id || ''));
 
   return (
@@ -194,14 +208,14 @@ export const UserProfile: React.FC = () => {
               <Avatar className="w-24 h-24 border-4 border-white">
                 <AvatarImage src={avatarPreview || undefined} />
                 <AvatarFallback className="text-2xl text-gray-900">
-                  {profile?.username?.charAt(0).toUpperCase()}
+                  {user?.profile?.username?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 pb-2">
-                <h2 className="text-2xl font-bold text-white drop-shadow-lg">{profile?.username}</h2>
-                <p className="text-white/90 drop-shadow">{profile?.email}</p>
+                <h2 className="text-2xl font-bold text-white drop-shadow-lg">{user?.profile?.username}</h2>
+                <p className="text-white/90 drop-shadow">{user?.profile?.email}</p>
                 <p className="text-sm text-white/80 drop-shadow">
-                  Joined {profile?.created_at ? new Date(profile?.created_at).toLocaleDateString() : ""}
+                  Joined {user?.profile?.created_at ? new Date(user?.profile?.created_at).toLocaleDateString() : ""}
                 </p>
               </div>
             </div>
@@ -268,11 +282,11 @@ export const UserProfile: React.FC = () => {
                     setEditing(false);
                     setAvatarFile(null);
                     setBannerFile(null);
-                    if (profile) {
-                      setAvatarPreview(profile.avatar || null);
-                      setBannerPreview(profile.banner || null);
-                      setUsername(profile.username || '');
-                      setBio(profile.bio || '');
+                    if (user?.profile) {
+                      setAvatarPreview(user.profile.avatar || null);
+                      setBannerPreview(user.profile.banner || null);
+                      setUsername(user.profile.username || '');
+                      setBio(user.profile.bio || '');
                     }
                   }}>
                     Cancel
@@ -283,7 +297,7 @@ export const UserProfile: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <h3 className="font-medium text-gray-700">Bio</h3>
-                  <p className="text-gray-600">{profile?.bio || 'No bio added yet.'}</p>
+                  <p className="text-gray-600">{user?.profile?.bio || 'No bio added yet.'}</p>
                 </div>
                 
                 {/* Social Links */}
@@ -500,12 +514,12 @@ export const UserProfile: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {[
-                    { label: 'Full Name', value: profile?.full_name },
-                    { label: 'Nickname', value: profile?.nickname },
-                    { label: 'Address', value: profile?.address },
-                    { label: 'School', value: profile?.school },
-                    { label: 'University', value: profile?.university },
-                    { label: 'Workplace', value: profile?.workplace }
+                    { label: 'Full Name', value: user?.profile?.full_name },
+                    { label: 'Nickname', value: user?.profile?.nickname },
+                    { label: 'Address', value: user?.profile?.address },
+                    { label: 'School', value: user?.profile?.school },
+                    { label: 'University', value: user?.profile?.university },
+                    { label: 'Workplace', value: user?.profile?.workplace }
                   ].map(({ label, value }) => (
                     value && (
                       <div key={label}>
@@ -516,13 +530,13 @@ export const UserProfile: React.FC = () => {
                   ))}
                   
                   {[
-                    { label: 'Hobbies', items: profile?.hobbies },
-                    { label: 'Interests', items: profile?.interests },
-                    { label: 'Likes', items: profile?.likes },
-                    { label: 'Dislikes', items: profile?.dislikes },
-                    { label: 'Achievements', items: profile?.achievements },
-                    { label: 'Honors', items: profile?.honors },
-                    { label: 'Awards', items: profile?.awards }
+                    { label: 'Hobbies', items: user?.profile?.hobbies },
+                    { label: 'Interests', items: user?.profile?.interests },
+                    { label: 'Likes', items: user?.profile?.likes },
+                    { label: 'Dislikes', items: user?.profile?.dislikes },
+                    { label: 'Achievements', items: user?.profile?.achievements },
+                    { label: 'Honors', items: user?.profile?.honors },
+                    { label: 'Awards', items: user?.profile?.awards }
                   ].map(({ label, items }) => (
                     items && items.length > 0 && (
                       <div key={label}>

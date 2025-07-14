@@ -1,53 +1,33 @@
 import { useState, useEffect } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useCookieConsent = () => {
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
   const [showCookieModal, setShowCookieModal] = useState(false);
 
-  useEffect(() => {
-    const checkCookieConsent = async () => {
-      // Check localStorage first
-      const localConsent = localStorage.getItem('cookieConsent');
-      
-      if (localConsent === 'accepted') {
-        return; // User already accepted
-      }
-
-      // If user is logged in, check their profile
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('cookie_consent')
-          .eq('id', user.id)
-          .single();
-
-        if (data?.cookie_consent) {
-          localStorage.setItem('cookieConsent', 'accepted');
-          return;
-        }
-      }
-
-      // Show modal if no consent found
+  const showConsentModal = () => {
+    const localConsent = localStorage.getItem('cookieConsent');
+    if (localConsent !== 'accepted') {
       setShowCookieModal(true);
-    };
-
-    checkCookieConsent();
-  }, [user]);
+    }
+  };
 
   const acceptCookies = async () => {
-    // Save to localStorage
     localStorage.setItem('cookieConsent', 'accepted');
-    
-    // Save to user profile if logged in
-    if (user) {
-      await supabase
-        .from('profiles')
-        .update({ cookie_consent: true })
-        .eq('id', user.id);
+    if (user && token) {
+      try {
+        await fetch('/api/users/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ cookie_consent: true }),
+        });
+      } catch (error) {
+        console.error('Failed to save cookie consent to profile:', error);
+      }
     }
-    
     setShowCookieModal(false);
   };
 
@@ -60,6 +40,7 @@ export const useCookieConsent = () => {
   return {
     showCookieModal,
     acceptCookies,
-    declineCookies
+    declineCookies,
+    showConsentModal,
   };
 };

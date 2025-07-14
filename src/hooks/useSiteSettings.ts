@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SiteSettings {
   siteName: string;
@@ -12,45 +12,42 @@ export const useSiteSettings = () => {
     siteName: 'Groupify',
     siteDescription: 'Social networking platform'
   });
+  const { token } = useAuth();
 
   useEffect(() => {
     fetchSettings();
   }, []);
 
-  const fetchSettings = () => {
+  const fetchSettings = async () => {
     try {
-      const stored = localStorage.getItem('siteSettings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSettings({
-          siteName: parsed.siteName || 'Groupify',
-          siteDescription: parsed.siteDescription || 'Social networking platform',
-          siteLogo: parsed.siteLogo
-        });
-      }
+      const res = await fetch('/api/admin');
+      if (!res.ok) throw new Error('Failed to fetch site settings');
+      const data = await res.json();
+      setSettings(data);
     } catch (error) {
       console.warn('Could not fetch site settings:', error);
     }
   };
 
   const updateSettings = async (newSettings: Partial<SiteSettings>) => {
-    const updatedSettings = { ...settings, ...newSettings };
-    
     try {
-      // Save to localStorage
-      localStorage.setItem('siteSettings', JSON.stringify(updatedSettings));
-
-      // Update local state
+      const res = await fetch('/api/admin', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(newSettings),
+      });
+      if (!res.ok) throw new Error('Failed to update site settings');
+      const updatedSettings = await res.json();
       setSettings(updatedSettings);
 
-      // Update document title and meta description
       document.title = updatedSettings.siteName;
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
         metaDescription.setAttribute('content', updatedSettings.siteDescription);
       }
-
-      console.log('[useSiteSettings] Settings updated:', updatedSettings);
     } catch (error) {
       console.error('[useSiteSettings] Error updating settings:', error);
       throw error;

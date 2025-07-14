@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, MessageCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { TopicPost } from '@/hooks/useTopics';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { SupabaseComments } from '@/components/feed/SupabaseComments';
+import { TopicPost } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { Comments } from '@/components/feed/Comments';
 import { useNotificationSender } from '@/hooks/useNotificationSender';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface TopicPostCardProps {
@@ -19,7 +18,7 @@ interface TopicPostCardProps {
 }
 
 export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate }) => {
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const [isLiking, setIsLiking] = useState(false);
   const { sendNotification } = useNotificationSender();
@@ -61,15 +60,20 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
   // Fetch usernames for likes tooltip
   React.useEffect(() => {
     if (post.likes && post.likes.length > 0) {
-      supabase
-        .from('profiles')
-        .select('username')
-        .in('id', post.likes)
-        .then(({ data }) => {
-          setLikedByUsers(data?.map(p => p.username) || []);
+      fetch('/api/users/profiles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ userIds: post.likes }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          setLikedByUsers(data.map((p: any) => p.username) || []);
         });
     }
-  }, [post.likes]);
+  }, [post.likes, token]);
 
   return (
     <Card className="mb-4 cursor-pointer" onClick={() => navigate(`/post/${post.id}`)}>
@@ -136,7 +140,7 @@ export const TopicPostCard: React.FC<TopicPostCardProps> = ({ post, onPostUpdate
           </Button>
         </div>
         <div onClick={e => e.stopPropagation()}>
-          <SupabaseComments postId={post.id} postType="post" showOnlyRecent={true} />
+          <Comments postId={post.id} postType="post" showOnlyRecent={true} />
         </div>
       </CardContent>
     </Card>

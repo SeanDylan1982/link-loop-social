@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useSimpleMessaging } from '@/hooks/useSimpleMessaging';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useBroadcastMessaging } from '@/hooks/useBroadcastMessaging';
+import { useAuth } from '@/hooks/useAuth';
 import { Send, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,62 +23,74 @@ interface SimpleMessagesListProps {
   conversationId: string;
 }
 
+// Define types for conversation meta and participant
+interface ConversationMeta {
+  id: string;
+  title: string | null;
+  is_group: boolean;
+  created_at: string;
+  updated_at: string;
+  other_user: {
+    id: string;
+    username: string;
+    avatar: string | null;
+  } | null;
+}
+
 export const SimpleMessagesList: React.FC<SimpleMessagesListProps> = ({ conversationId }) => {
-  const { sendMessage, getMessages, markAsRead, conversations } = useSimpleMessaging();
-  const { user } = useSupabaseAuth();
+  const { messages, loading, sendMessage } = useBroadcastMessaging({ conversationId });
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const conversation = conversations.find(c => c.id === conversationId);
-
-  // Load messages
-  useEffect(() => {
-    const loadMessages = async () => {
-      setLoading(true);
-      const messagesData = await getMessages(conversationId);
-      setMessages(messagesData);
-      setLoading(false);
-      
-      // Mark messages as read
-      await markAsRead(conversationId);
-    };
-
-    if (conversationId) {
-      loadMessages();
-    }
-  }, [conversationId]);
+  const [conversationMeta, setConversationMeta] = useState<ConversationMeta | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Fetch conversation metadata and other user
+  useEffect(() => {
+    const fetchMeta = async () => {
+      setMetaLoading(true);
+      try {
+        const res = await fetch(`/api/conversations/${conversationId}`, {
+          headers: { 'Authorization': `Bearer ${user?.token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch conversation metadata');
+        const data = await res.json();
+        setConversationMeta(data);
+      } catch (error) {
+        console.error('Error fetching conversation metadata:', error);
+        setConversationMeta(null);
+      } finally {
+        setMetaLoading(false);
+      }
+    };
+    if (conversationId && user?.id) fetchMeta();
+  }, [conversationId, user?.id, user?.token]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
 
     setSending(true);
-    const success = await sendMessage(conversationId, newMessage);
-    
-    if (success) {
-      setNewMessage('');
-      // Reload messages
-      const updatedMessages = await getMessages(conversationId);
-      setMessages(updatedMessages);
-    }
-    
+    await sendMessage(newMessage);
+    setNewMessage('');
     setSending(false);
   };
 
-  const displayName = conversation?.is_group 
-    ? conversation.title || 'Group Chat'
-    : conversation?.other_user?.username || 'Unknown User';
+  // const displayName = conversation?.is_group 
+  //   ? conversation.title || 'Group Chat'
+  //   : conversation?.other_user?.username || 'Unknown User';
 
-  if (loading) {
+  // Compute displayName
+  const displayName = conversationMeta?.other_user?.username || conversationMeta?.title || 'Chat';
+
+  if (loading || metaLoading) {
     return (
       <Card className="h-full">
         <CardHeader>
@@ -108,16 +120,16 @@ export const SimpleMessagesList: React.FC<SimpleMessagesListProps> = ({ conversa
             <ArrowLeft size={16} />
           </Button>
           <Avatar>
-            <AvatarImage src={conversation?.other_user?.avatar || undefined} />
+            <AvatarImage src={conversationMeta?.other_user?.avatar || undefined} />
             <AvatarFallback>
               {displayName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
             <h3 className="font-semibold">{displayName}</h3>
-            {conversation?.other_user && (
+            {conversationMeta?.other_user && (
               <p className="text-sm text-muted-foreground">
-                @{conversation.other_user.username}
+                @{conversationMeta.other_user.username}
               </p>
             )}
           </div>
@@ -129,7 +141,7 @@ export const SimpleMessagesList: React.FC<SimpleMessagesListProps> = ({ conversa
           <div className="space-y-4">
             {messages.length > 0 ? (
               messages.map((message) => {
-                const isOwn = message.sender_id === user?.id;
+                const isOwn = message.senderId === user?.id;
                 
                 return (
                   <div
@@ -145,7 +157,7 @@ export const SimpleMessagesList: React.FC<SimpleMessagesListProps> = ({ conversa
                     >
                       <p className="text-sm">{message.content}</p>
                       <p className="text-xs opacity-70 mt-1">
-                        {new Date(message.created_at).toLocaleTimeString([], {
+                        {new Date(message.createdAt).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}

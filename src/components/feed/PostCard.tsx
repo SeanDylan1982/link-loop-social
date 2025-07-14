@@ -184,26 +184,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
             </form>
 
             <div className="space-y-2">
-              {post.comments.map((comment) => {
-                const commentAuthor = JSON.parse(localStorage.getItem('socialUsers') || '[]')
-                  .find((u: User) => u.id === comment.userId);
-                
-                return (
-                  <div key={comment.id} className="flex space-x-2 p-2 bg-gray-50 rounded-lg">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={commentAuthor?.avatar} />
-                      <AvatarFallback>{commentAuthor?.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{commentAuthor?.username}</p>
-                      <p className="text-sm">{comment.content}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(comment.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {post.comments.map((comment) => (
+                <CommentCard key={comment.id} comment={comment} />
+              ))}
             </div>
           </div>
         )}

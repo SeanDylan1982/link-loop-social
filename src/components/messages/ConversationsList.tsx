@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useConversations } from '@/hooks/useConversations';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +16,7 @@ interface ConversationsListProps {
 
 export const ConversationsList: React.FC<ConversationsListProps> = ({ onCreateGroup }) => {
   const { conversations, isLoading } = useConversations();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showDMDialog, setShowDMDialog] = useState(false);

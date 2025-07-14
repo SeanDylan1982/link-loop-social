@@ -1,31 +1,27 @@
 
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { NotificationType } from "@/hooks/useNotifications";
+import { useAuth } from "@/hooks/useAuth";
+import { NotificationType } from "@/types";
 
 export const useNotificationSender = () => {
+  const { token } = useAuth();
+
   const sendNotification = useMutation({
-    mutationFn: async ({
-      recipientId,
-      type,
-      content,
-      relatedId,
-    }: {
+    mutationFn: async (notification: {
       recipientId: string;
       type: NotificationType;
       content: string;
       relatedId?: string;
     }) => {
-      const { error } = await supabase
-        .from("notifications")
-        .insert({
-          user_id: recipientId,
-          type,
-          content,
-          related_id: relatedId || null,
-        });
-      
-      if (error) throw error;
+      const res = await fetch("/api/notifications", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(notification),
+      });
+      if (!res.ok) throw new Error("Failed to send notification");
     },
   });
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/useAdmin';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,12 +16,11 @@ const AdminPage: React.FC = () => {
   const makeUserAdmin = async () => {
     if (!adminEmail.trim()) return;
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: true })
-        .eq('email', adminEmail);
-      
-      if (error) throw error;
+      await fetch('/api/admin/users/promote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ email: adminEmail }),
+      });
       toast({ title: 'User promoted to admin successfully' });
       setAdminEmail('');
       fetchUsers();
@@ -72,19 +70,9 @@ const AdminPage: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error, count } = await supabase
-        .from('profiles')
-        .select('id, username, email, created_at', { count: 'exact' })
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.warn('[AdminPage] Error fetching users:', error);
-        setUsers([]);
-        return;
-      }
-      
+      const res = await fetch('/api/admin/users', { headers });
+      const data = await res.json();
       setUsers(data || []);
-      console.log('[AdminPage] Total users found:', data?.length || 0, 'Data:', data);
     } catch (err) {
       console.warn('[AdminPage] Failed to fetch users:', err);
       setUsers([]);
@@ -92,79 +80,16 @@ const AdminPage: React.FC = () => {
   };
 
   const fetchPosts = async () => {
-    const { data } = await supabase
-      .from('posts')
-      .select('id, content, created_at, image, profiles(username)')
-      .order('created_at', { ascending: false })
-      .limit(50);
+    const res = await fetch('/api/admin/posts', { headers });
+    const data = await res.json();
     setPosts(data || []);
   };
 
   const fetchReportedPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('post_reports')
-        .select(`
-          id,
-          reason,
-          details,
-          created_at,
-          post_id,
-          reporter_id
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.warn('post_reports table not found, using localStorage fallback:', error);
-        // Fallback to localStorage for demo
-        const reportedIds = JSON.parse(localStorage.getItem('reportedPosts') || '[]');
-        if (reportedIds.length > 0) {
-          const { data: posts } = await supabase
-            .from('posts')
-            .select('id, content, created_at, image, user_id, profiles(username)')
-            .in('id', reportedIds);
-          
-          const mockReports = posts?.map(post => ({
-            id: `report-${post.id}`,
-            reason: 'Spam or unwanted content',
-            details: 'User reported this post',
-            created_at: new Date().toISOString(),
-            posts: post,
-            reporter: { username: 'Anonymous' }
-          })) || [];
-          
-          setReportedPosts(mockReports);
-        } else {
-          setReportedPosts([]);
-        }
-        return;
-      }
-      
-      // If we have reports, fetch the associated post data
-      if (data && data.length > 0) {
-        const postIds = data.map(report => report.post_id);
-        const { data: posts } = await supabase
-          .from('posts')
-          .select('id, content, created_at, image, report_count, profiles!posts_user_id_fkey(username)')
-          .in('id', postIds);
-        
-        const { data: reporters } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .in('id', data.map(r => r.reporter_id));
-        
-        const enrichedReports = data.map(report => ({
-          ...report,
-          posts: posts?.find(p => p.id === report.post_id),
-          reporter: reporters?.find(r => r.id === report.reporter_id)
-        }));
-        
-        setReportedPosts(enrichedReports);
-      } else {
-        setReportedPosts([]);
-      }
-      
-      console.log('[AdminPage] Reported posts found:', data?.length || 0);
+      const res = await fetch('/api/admin/reports', { headers });
+      const data = await res.json();
+      setReportedPosts(data || []);
     } catch (error) {
       console.error('Error fetching reported posts:', error);
       setReportedPosts([]);
@@ -173,29 +98,21 @@ const AdminPage: React.FC = () => {
 
   const handleIgnoreReport = async (reportId: string) => {
     try {
-      await supabase
-        .from('post_reports')
-        .delete()
-        .eq('id', reportId);
+      await fetch(`/api/admin/reports/${reportId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      setReportedPosts(prev => prev.filter(r => r.id !== reportId));
+      toast({ title: 'Report ignored' });
     } catch (error) {
       console.warn('Could not delete from database:', error);
     }
-    
-    setReportedPosts(prev => prev.filter(r => r.id !== reportId));
-    toast({ title: 'Report ignored' });
   };
 
   const handleDeleteReportedPost = async (postId: string, reportId: string) => {
     try {
       await deletePost(postId);
-      
-      // Also delete the report
-      await supabase
-        .from('post_reports')
-        .delete()
-        .eq('id', reportId);
-      
-      setReportedPosts(prev => prev.filter(r => r.id !== reportId));
+      await handleIgnoreReport(reportId);
       toast({ title: 'Reported post deleted' });
     } catch (error) {
       console.error('Error deleting reported post:', error);

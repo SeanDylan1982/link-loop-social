@@ -1,44 +1,36 @@
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Moon, Sun } from 'lucide-react';
 
-import React, { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-const getInitialTheme = () => {
-  if (typeof window === "undefined") return "light";
-  const stored = localStorage.getItem("theme");
-  if (stored === "dark" || stored === "light") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-};
-
-export const DarkModeToggle: React.FC = () => {
-  const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
+const DarkModeToggle: React.FC = () => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
+    const isDark = localStorage.getItem('darkMode') === 'true';
+    setIsDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add('dark');
     } else {
-      document.documentElement.classList.remove("dark");
+      document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  }, []);
 
-  const toggleTheme = () =>
-    setTheme((t) => (t === "light" ? "dark" : "light"));
+  const toggleDarkMode = () => {
+    const newIsDarkMode = !isDarkMode;
+    setIsDarkMode(newIsDarkMode);
+    localStorage.setItem('darkMode', newIsDarkMode.toString());
+    if (newIsDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   return (
-    <Button
-      variant="ghost"
-      aria-label="Toggle dark mode"
-      onClick={toggleTheme}
-      size="icon"
-      className="rounded-full"
-    >
-      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-      <span className="sr-only">
-        {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      </span>
+    <Button onClick={toggleDarkMode} variant="ghost" size="icon">
+      {isDarkMode ? <Sun className="h-[1.2rem] w-[1.2rem]" /> : <Moon className="h-[1.2rem] w-[1.2rem]" />}
     </Button>
   );
 };
+
+export default DarkModeToggle;
