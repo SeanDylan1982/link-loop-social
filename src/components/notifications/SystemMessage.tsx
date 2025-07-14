@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 export const SystemMessage: React.FC = () => {
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
   const [systemMessage, setSystemMessage] = useState<string | null>(null);
   const [messageId, setMessageId] = useState<string | null>(null);
 
@@ -13,23 +12,13 @@ export const SystemMessage: React.FC = () => {
 
     const fetchSystemMessage = async () => {
       try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('id, content')
-          .eq('user_id', user.id)
-          .eq('type', 'system')
-          .eq('read', false)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) {
-          console.warn('[SystemMessage] Could not fetch notifications:', error);
-          return;
-        }
-
+        const res = await fetch('/api/system-messages/active', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error('Failed to fetch system message');
+        const data = await res.json();
         if (data) {
-          setSystemMessage(data.content);
+          setSystemMessage(data.message);
           setMessageId(data.id);
         }
       } catch (err) {
@@ -38,16 +27,14 @@ export const SystemMessage: React.FC = () => {
     };
 
     fetchSystemMessage();
-  }, [user]);
+  }, [user, token]);
 
   const handleClose = async () => {
     if (!messageId) return;
-    
-    await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', messageId);
-    
+    await fetch(`/api/notifications/${messageId}/read`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
     setSystemMessage(null);
     setMessageId(null);
   };

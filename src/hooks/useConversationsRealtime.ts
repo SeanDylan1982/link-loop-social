@@ -1,94 +1,36 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+  import { useAuth } from '@/hooks/useAuth';
+import io from 'socket.io-client';
 
-// Track active subscriptions per user
-const activeSubscriptions = new Map<string, any>();
+const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
 
 export const useConversationsRealtime = () => {
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
-    if (!user) return;
+    if (!user || !token) return;
 
-    const userId = user.id;
-    
-    // Always create fresh subscription for current session
-    if (activeSubscriptions.has(userId)) {
-      const existingChannel = activeSubscriptions.get(userId);
-      supabase.removeChannel(existingChannel);
-      activeSubscriptions.delete(userId);
-    }
+    socket.auth = { token };
+    socket.connect();
 
-    console.log('[useConversationsRealtime] Setting up real-time subscription for user:', userId);
-    
-    const channelName = `conversations-realtime-${userId}`;
-    
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversation_participants',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          console.log('[useConversationsRealtime] Conversation participants changed:', payload);
-          // Force immediate refresh for all conversation queries
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
-          queryClient.refetchQueries({ queryKey: ['conversations'] });
-          // Also invalidate specific user queries if we can identify them
-          if (payload.new && typeof payload.new === 'object' && 'user_id' in payload.new) {
-            queryClient.invalidateQueries({ queryKey: ['conversations', payload.new.user_id] });
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations',
-        },
-        (payload) => {
-          console.log('[useConversationsRealtime] Conversation changed:', payload);
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
-          queryClient.refetchQueries({ queryKey: ['conversations'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          console.log('[useConversationsRealtime] New message inserted:', payload);
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
-          queryClient.refetchQueries({ queryKey: ['conversations'] });
-          // Also refresh specific conversation
-          if (payload.new && typeof payload.new === 'object' && 'conversation_id' in payload.new) {
-            queryClient.invalidateQueries({ queryKey: ['conversation', payload.new.conversation_id] });
-          }
-        }
-      )
-      .subscribe();
+    const handleConversationUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    };
 
-    // Store the subscription
-    activeSubscriptions.set(userId, channel);
+    const handleNewMessage = (message: any) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation', message.conversationId] });
+    };
+
+    socket.on('conversation:update', handleConversationUpdate);
+    socket.on('message:new', handleNewMessage);
 
     return () => {
-      console.log('[useConversationsRealtime] Cleaning up real-time subscription for user:', userId);
-      const storedChannel = activeSubscriptions.get(userId);
-      if (storedChannel) {
-        supabase.removeChannel(storedChannel);
-        activeSubscriptions.delete(userId);
-      }
+      socket.off('conversation:update', handleConversationUpdate);
+      socket.off('message:new', handleNewMessage);
+      socket.disconnect();
     };
-  }, [user?.id, queryClient]);
+  }, [user, token, queryClient]);
 };

@@ -6,7 +6,16 @@
  * message sending process.
  */
 
-import { supabase } from '@/integrations/supabase/client';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+const api = {
+  get: (url: string, token?: string) => fetch(`${API_URL}${url}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} }).then(res => res.json()),
+  post: (url: string, data: any, token?: string) => fetch(`${API_URL}${url}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  }).then(res => res.json()),
+};
 
 /**
  * Test 1: Trace the flow of a direct message creation
@@ -18,110 +27,27 @@ export async function testDirectMessageFlow(senderId: string, receiverId: string
   console.log('Receiver ID:', receiverId);
   
   try {
-    // Step 1: Check if conversation already exists
-    console.log('\nStep 1: Checking for existing conversation');
-    const { data: candidateConvs } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('is_group', false);
-    
-    console.log('Found', candidateConvs?.length || 0, 'potential conversations');
-    
-    let existingConversationId = null;
-    
-    // Step 2: Check participants for each conversation
-    console.log('\nStep 2: Checking participants');
-    for (const conv of candidateConvs || []) {
-      const { data: parts } = await supabase
-        .from('conversation_participants')
-        .select('user_id')
-        .eq('conversation_id', conv.id);
-      
-      const participantIds = (parts || []).map(p => p.user_id);
-      console.log(`Conversation ${conv.id} has participants:`, participantIds);
-      
-      if (participantIds.length === 2 && 
-          participantIds.includes(senderId) && 
-          participantIds.includes(receiverId)) {
-        existingConversationId = conv.id;
-        console.log('Found existing conversation:', existingConversationId);
-        break;
-      }
-    }
-    
-    // Step 3: Create new conversation if needed
-    let conversationId = existingConversationId;
-    if (!conversationId) {
-      console.log('\nStep 3: Creating new conversation');
-      const { data: conversation, error } = await supabase
-        .from('conversations')
-        .insert([{ title: null, is_group: false, creator_id: senderId }])
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error creating conversation:', error);
-        return;
-      }
-      
-      conversationId = conversation.id;
-      console.log('Created new conversation:', conversationId);
-      
-      // Step 4: Add participants
-      console.log('\nStep 4: Adding participants');
-      const { error: participantError } = await supabase
-        .from('conversation_participants')
-        .insert([
-          { conversation_id: conversationId, user_id: senderId },
-          { conversation_id: conversationId, user_id: receiverId }
-        ]);
-      
-      if (participantError) {
-        console.error('Error adding participants:', participantError);
-        return;
-      }
-      
-      console.log('Added participants successfully');
-    }
-    
-    // Step 5: Send a test message
-    console.log('\nStep 5: Sending test message');
+    // Step 1 & 2: Find or create DM conversation
+    console.log('\nStep 1 & 2: Finding or creating DM conversation');
+    const { id: conversationId } = await api.post('/api/conversations/dm', { friendId: receiverId });
+    console.log('Using conversation ID:', conversationId);
+
+    // Step 3: Send a test message
+    console.log('\nStep 3: Sending test message');
     const messageContent = `Test message from ${senderId} to ${receiverId}`;
-    const { data: message, error: messageError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: senderId,
-        content: messageContent,
-      })
-      .select()
-      .single();
-    
-    if (messageError) {
-      console.error('Error sending message:', messageError);
-      return;
-    }
-    
+    const message = await api.post('/api/messages', { conversationId, content: messageContent, receiverId });
     console.log('Message sent successfully:', message);
-    
-    // Step 6: Verify message was created correctly
-    console.log('\nStep 6: Verifying message');
-    const { data: verifyMessage } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('id', message.id)
-      .single();
-    
+
+    // Step 4: Verify message was created correctly
+    console.log('\nStep 4: Verifying message');
+    const messages = await api.get(`/api/messages/${conversationId}`);
+    const verifyMessage = messages.find((m: any) => m.id === message.id);
     console.log('Verified message:', verifyMessage);
-    
-    // Step 7: Check conversation participants again
-    console.log('\nStep 7: Verifying conversation participants');
-    const { data: finalParticipants } = await supabase
-      .from('conversation_participants')
-      .select('user_id')
-      .eq('conversation_id', conversationId);
-    
-    console.log('Final participants:', finalParticipants?.map(p => p.user_id));
+
+    // Step 5: Check conversation participants again
+    console.log('\nStep 5: Verifying conversation participants');
+    const conversation = await api.get(`/api/conversations/${conversationId}`);
+    console.log('Final participants:', conversation.participants.map((p: any) => p.id));
     
     return {
       success: true,
@@ -149,24 +75,7 @@ export async function testConversationPageFlow(conversationId: string, currentUs
   try {
     // Step 1: Fetch conversation details
     console.log('\nStep 1: Fetching conversation details');
-    const { data: conversation, error } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        participants:conversation_participants (
-          user_id,
-          profiles:profiles (
-            id, username, avatar
-          )
-        )
-      `)
-      .eq('id', conversationId)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching conversation:', error);
-      return;
-    }
+    const conversation = await api.get(`/api/conversations/${conversationId}`);
     
     console.log('Conversation:', conversation);
     
@@ -191,21 +100,8 @@ export async function testConversationPageFlow(conversationId: string, currentUs
     console.log('\nStep 4: Sending test message with explicit receiver');
     if (receiverId) {
       const messageContent = `Test message with explicit receiver: ${receiverId}`;
-      const { data: message, error: messageError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: currentUserId,
-          content: messageContent,
-        })
-        .select()
-        .single();
-      
-      if (messageError) {
-        console.error('Error sending message:', messageError);
-      } else {
-        console.log('Message sent successfully:', message);
-      }
+      const message = await api.post('/api/messages', { conversationId, content: messageContent, receiverId });
+      console.log('Message sent successfully:', message);
     }
     
     return {
@@ -238,22 +134,8 @@ export async function checkMessagesSchema() {
       content: 'Schema test message'
     };
     
-    // Try to insert (will fail due to foreign key constraints, but we'll see the schema error)
-    const { error } = await supabase
-      .from('messages')
-      .insert([testMessage]);
-    
-    if (error) {
-      console.log('Schema test result:', error);
-      // Check if the error is about receiver_id not existing
-      if (error.message.includes('receiver_id')) {
-        console.log('DIAGNOSIS: receiver_id column does not exist in messages table');
-      } else {
-        console.log('DIAGNOSIS: receiver_id may exist but other constraints failed');
-      }
-    } else {
-      console.log('UNEXPECTED: Test message inserted successfully');
-    }
+    // This test is no longer relevant as the backend handles the schema.
+    console.log('Schema test is now handled by the backend.');
     
     return {
       success: true,

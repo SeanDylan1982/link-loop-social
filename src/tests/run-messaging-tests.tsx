@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { runAllTests } from './messaging-debug';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Test Runner Component for Messaging System
@@ -12,7 +12,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
  * and displays the results in the console.
  */
 export const MessagingTestRunner: React.FC = () => {
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const [receiverId, setReceiverId] = useState('');
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<string[]>([]);

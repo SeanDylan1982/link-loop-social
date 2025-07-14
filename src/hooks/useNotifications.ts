@@ -1,64 +1,35 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { supabase } from "@/integrations/supabase/client";
-
-export type NotificationType = "message" | "friend_request" | "like" | "comment";
-
-interface Notification {
-  id: string;
-  user_id: string;
-  type: NotificationType;
-  related_id: string | null;
-  content: string | null;
-  read: boolean;
-  created_at: string;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { Notification, NotificationType } from "@/types";
 
 export const useNotifications = () => {
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
   const queryClient = useQueryClient();
+
+  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
   // Get all notifications (latest first)
   const { data: notifications, isLoading } = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const res = await fetch("/api/notifications", { headers });
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      return res.json();
     },
     enabled: !!user,
   });
 
-  // Insert a notification for a user
+  // This hook is now for the current user, so no need to pass userId
   const insertNotification = useMutation({
-    mutationFn: async ({
-      userId,
-      type,
-      relatedId,
-      content,
-    }: {
-      userId: string;
-      type: NotificationType;
-      relatedId?: string | null;
-      content?: string | null;
-    }) => {
-      // The insert runs as the AUTH'D USER so can only insert "their own" notification (policy)
-      // So for cross-user notifications, call this with the supabase client as the recipient.
-      const { error } = await supabase
-        .from("notifications")
-        .insert({
-          user_id: userId,
-          type,
-          related_id: relatedId ?? null,
-          content: content ?? null,
-        });
-      if (error) throw error;
+    mutationFn: async (notification: Omit<Notification, 'id' | 'user_id' | 'created_at' | 'read'>) => {
+      const res = await fetch("/api/notifications", {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(notification),
+      });
+      if (!res.ok) throw new Error("Failed to create notification");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
@@ -68,11 +39,24 @@ export const useNotifications = () => {
   // Mark as read
   const markAsRead = useMutation({
     mutationFn: async (notificationId: string) => {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("id", notificationId);
-      if (error) throw error;
+      const res = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'POST',
+        headers,
+      });
+      if (!res.ok) throw new Error("Failed to mark notification as read");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    },
+  });
+
+  const markAllAsRead = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/notifications/mark-all-as-read", {
+        method: 'POST',
+        headers,
+      });
+      if (!res.ok) throw new Error("Failed to mark all notifications as read");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
@@ -84,5 +68,6 @@ export const useNotifications = () => {
     isLoading,
     insertNotification,
     markAsRead,
+    markAllAsRead,
   };
 };

@@ -1,153 +1,77 @@
-
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Link } from "react-router-dom";
+import DarkModeToggle from "./DarkModeToggle";
+import { useAuth } from "@/hooks/useAuth";
+import Search from "./Search";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import NotificationsDropdown from "./NotificationsDropdown";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useAdmin } from '@/hooks/useAdmin';
-import { useSiteSettings } from '@/hooks/useSiteSettings';
-import { Home, Users, MessageSquare, User, LogOut, Shield, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
-import { NotificationIcon } from '@/components/notifications/NotificationIcon';
-import { DarkModeToggle } from "./DarkModeToggle";
+} from "@/components/ui/dropdown-menu";
 
-interface NavbarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
-  const { profile, logout } = useSupabaseAuth();
-  const { isAdmin } = useAdmin();
-  const { settings } = useSiteSettings();
-  const navigate = useNavigate();
-
-  const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'friends', label: 'Friends', icon: Users },
-    { id: 'messages', label: 'Messages', icon: MessageSquare },
-    // Notifications intentionally handled separately for special UI.
-    { id: 'profile', label: 'Profile', icon: User },
-  ];
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast({ title: "Logged out", description: "You have been logged out successfully." });
-      navigate('/');
-    } catch (error) {
-      console.error('Error logging out:', error);
-      toast({ title: "Logout Failed", description: "Something went wrong.", variant: "destructive" });
-    }
-  };
+export function Navbar({ isSidebarCollapsed, setIsSidebarCollapsed }) {
+  const { user, logout } = useAuth();
 
   return (
-    <nav className="bg-white dark:bg-background shadow-lg border-b sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-12">
-            <div className="flex items-center gap-2">
-              {settings.siteLogo && (
-                <img src={settings.siteLogo} alt="Logo" className="h-8 w-8 object-contain" />
-              )}
-              <h1 className="text-2xl font-bold text-blue-600 dark:text-primary">
-                {settings.siteName}
-              </h1>
+    <nav className="bg-white shadow-sm dark:bg-gray-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center">
+              <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                {isSidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
+              </button>
+              <Link to="/" className="flex items-center ml-4">
+                <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
+                <h1 className="text-xl font-bold ml-2">Link Loop</h1>
+              </Link>
             </div>
-            <div className="hidden md:flex space-x-12">
-              {navItems.slice(0, 3).map((item) => (
-                <Button
-                  key={item.id}
-                  variant={activeTab === item.id ? "default" : "ghost"}
-                  onClick={() => onTabChange(item.id)}
-                  className="flex items-center space-x-2"
-                >
-                  <item.icon size={18} />
-                  <span>{item.label}</span>
-                </Button>
-              ))}
+            <div className="flex-grow max-w-lg mx-auto">
+              <Search />
+            </div>
+            <div className="hidden sm:flex sm:items-center sm:space-x-8">
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <NotificationIcon />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center space-x-2 p-2"
-                >
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={profile?.avatar} />
-                    <AvatarFallback>
-                      {profile?.username?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden sm:block text-sm font-medium">
-                    {profile?.username}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => onTabChange("profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>Admin Dashboard</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Admin Settings</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <DarkModeToggle />
+            <NotificationsDropdown />
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to={`/profile/${user.id}`}>Profile</Link>
+                  </DropdownMenuItem>
+                  {user.isAdmin && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">Admin Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/settings">Admin Settings</Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        <div className="md:hidden flex justify-around py-2 border-t">
-          {navItems.slice(0, 3).map((item) => (
-            <Button
-              key={item.id}
-              variant={activeTab === item.id ? "default" : "ghost"}
-              onClick={() => onTabChange(item.id)}
-              size="sm"
-            >
-              <item.icon size={16} />
-            </Button>
-          ))}
-          <NotificationIcon />
-          {navItems.slice(3).map((item) => (
-            <Button
-              key={item.id}
-              variant={activeTab === item.id ? "default" : "ghost"}
-              onClick={() => onTabChange(item.id)}
-              size="sm"
-            >
-              <item.icon size={16} />
-            </Button>
-          ))}
         </div>
       </div>
     </nav>
   );
-};
+}

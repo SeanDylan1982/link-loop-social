@@ -1,36 +1,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { Topic, TopicPost } from '@/types';
 
-export interface Topic {
-  id: string;
-  title: string;
-  description?: string;
-  creator_id: string;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-  post_count?: number;
-  member_count?: number;
-  last_post_date?: string;
-  is_member?: boolean;
-}
-
-export interface TopicPost {
-  id: string;
-  topic_id: string;
-  user_id: string;
-  content: string;
-  image?: string;
-  likes: string[];
-  created_at: string;
-  profiles?: {
-    username: string;
-    avatar?: string;
-  };
-}
 
 export type TopicSortType = "trending" | "popular" | "alphabetical" | "recent";
 
@@ -38,64 +11,17 @@ export const useTopics = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<TopicSortType>("recent");
-  const { user } = useSupabaseAuth();
+  const { user, token } = useAuth();
 
   const fetchTopics = async () => {
     try {
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching topics:', error);
-        return;
-      }
-
-      // Get additional stats for each topic
-      const topicsWithStats = await Promise.all(
-        (data || []).map(async (topic) => {
-          // Get post count and last post date from database
-          const { data: posts, count: postCount } = await supabase
-            .from('posts')
-            .select('created_at', { count: 'exact' })
-            .eq('topic_id', topic.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          
-          const lastPostDate = posts && posts.length > 0 ? posts[0].created_at : null;
-
-          // Get member count and check membership in one query
-          let memberCount = 0;
-          let isMember = false;
-          
-          try {
-            const { data: memberships, count } = await supabase
-              .from('topic_memberships')
-              .select('user_id', { count: 'exact' })
-              .eq('topic_id', topic.id);
-            
-            memberCount = count || 0;
-            if (user && memberships) {
-              isMember = memberships.some(m => m.user_id === user.id);
-            }
-          } catch (membershipError) {
-            console.warn('Could not fetch membership data for topic:', topic.id, membershipError);
-            memberCount = 0;
-            isMember = false;
-          }
-
-          return {
-            ...topic,
-            post_count: postCount || 0,
-            member_count: memberCount || 0,
-            last_post_date: lastPostDate,
-            is_member: isMember
-          };
-        })
-      );
-
-      setTopics(topicsWithStats);
+      setLoading(true);
+      const res = await fetch('/api/topics', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Failed to fetch topics');
+      const data = await res.json();
+      setTopics(data || []);
     } catch (error) {
       console.error('Error fetching topics:', error);
     } finally {
@@ -132,32 +58,17 @@ export const useTopics = () => {
       toast({ title: "Error", description: "You must be logged in to create a topic", variant: "destructive" });
       return;
     }
-
     try {
-      const { data, error } = await supabase
-        .from('topics')
-        .insert([{
-          title,
-          description,
-          creator_id: user.id,
-          is_public: isPublic
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      // Auto-join the creator as a member
-      await supabase
-        .from('topic_memberships')
-        .insert([{
-          topic_id: data.id,
-          user_id: user.id
-        }]);
-
-      const newTopic = { ...data, post_count: 0, member_count: 1, is_member: true };
+      const res = await fetch('/api/topics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name: title, description, isPublic }),
+      });
+      if (!res.ok) throw new Error('Failed to create topic');
+      const newTopic = await res.json();
       setTopics([newTopic, ...topics]);
       toast({ title: "Topic created successfully!" });
       return newTopic;
@@ -172,19 +83,12 @@ export const useTopics = () => {
       toast({ title: "Error", description: "You must be logged in to join a topic", variant: "destructive" });
       return;
     }
-
     try {
-      const { error } = await supabase
-        .from('topic_memberships')
-        .insert([{
-          topic_id: topicId,
-          user_id: user.id
-        }]);
-
-      if (error) {
-        throw error;
-      }
-
+      const res = await fetch(`/api/topics/${topicId}/join`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Failed to join topic');
       toast({ title: "Joined topic successfully!" });
       fetchTopics(); // Refresh to update member counts and membership status
     } catch (error) {

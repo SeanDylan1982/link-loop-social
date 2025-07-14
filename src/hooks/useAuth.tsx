@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
+import * as api from '@/api/api';
 
 interface AuthContextType {
   user: User | null;
@@ -16,65 +17,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('socialUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    // On mount, try to get user from backend using JWT
+    const token = api.getToken();
+    if (token) {
+      // Optionally, fetch user profile from backend
+      // For now, just keep user as logged in if token exists
+      // You can add a /me endpoint to fetch user info
     }
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate API call
-    const users = JSON.parse(localStorage.getItem('socialUsers') || '[]');
-    const foundUser = users.find((u: User) => u.email === email);
-    
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('socialUser', JSON.stringify(foundUser));
-    } else {
-      throw new Error('User not found');
-    }
+    const user = await api.login(email, password);
+    setUser(user);
   };
 
   const signup = async (username: string, email: string, password: string) => {
-    const users = JSON.parse(localStorage.getItem('socialUsers') || '[]');
-    
-    if (users.find((u: User) => u.email === email)) {
-      throw new Error('User already exists');
-    }
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      username,
-      email,
-      createdAt: new Date(),
-      friends: [],
-      friendRequests: []
-    };
-
-    users.push(newUser);
-    localStorage.setItem('socialUsers', JSON.stringify(users));
-    setUser(newUser);
-    localStorage.setItem('socialUser', JSON.stringify(newUser));
+    const user = await api.signup(username, email, password);
+    setUser(user);
   };
 
   const logout = () => {
+    api.logout();
     setUser(null);
-    localStorage.removeItem('socialUser');
   };
 
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-      localStorage.setItem('socialUser', JSON.stringify(updatedUser));
-      
-      // Update in users list
-      const users = JSON.parse(localStorage.getItem('socialUsers') || '[]');
-      const userIndex = users.findIndex((u: User) => u.id === user.id);
-      if (userIndex !== -1) {
-        users[userIndex] = updatedUser;
-        localStorage.setItem('socialUsers', JSON.stringify(users));
-      }
+      // Optionally, send update to backend
     }
   };
 

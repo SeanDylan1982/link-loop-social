@@ -1,10 +1,10 @@
 import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useFriendshipStatus } from '@/hooks/useFriendshipStatus';
 import { useConversations } from '@/hooks/useConversations';
-import { useSupabaseComments } from '@/hooks/useSupabaseComments';
+import { useComments } from '@/hooks/useComments';
 import { usePosts } from '@/hooks/usePosts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,11 +15,11 @@ import { UserPlus, Clock, MessageCircle, Link as LinkIcon, Globe, Github, Twitte
 
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const { user, loading: authLoading } = useSupabaseAuth();
+  const { user, loading: authLoading } = useAuth();
   const { profile, posts, loading: profileLoading, error } = useUserProfile(userId);
   const { status: friendshipStatus, sendFriendRequest, loading: friendshipLoading } = useFriendshipStatus(userId);
   const { getOrCreateDM } = useConversations();
-  const { comments } = useSupabaseComments('');
+  const { comments } = useComments('');
   const { posts: allPosts } = usePosts();
   const navigate = useNavigate();
 
