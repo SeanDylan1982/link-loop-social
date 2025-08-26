@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { AuthProvider } from "./hooks/useAuth";
+import { SupabaseAuthProvider } from "./hooks/useSupabaseAuth";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import PrivateRoute from "./components/auth/PrivateRoute";
@@ -37,7 +37,7 @@ const App: React.FC = () => {
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
+      <SupabaseAuthProvider>
         <BrowserRouter>
           <div className="flex flex-col h-screen">
             <Navbar isSidebarCollapsed={isSidebarCollapsed} setIsSidebarCollapsed={setIsSidebarCollapsed} />
@@ -71,7 +71,7 @@ const App: React.FC = () => {
           <CookieConsentModal />
           <Footer />
         </BrowserRouter>
-      </AuthProvider>
+      </SupabaseAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
   )

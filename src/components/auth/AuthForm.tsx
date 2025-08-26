@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { toast } from '@/hooks/use-toast';
 
 interface AuthFormProps {
@@ -17,7 +17,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const { signIn, signUp } = useSupabaseAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,10 +25,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
 
     try {
       if (isLogin) {
-        await login(email, password);
+        await signIn(email, password);
         toast({ title: "Welcome back!" });
       } else {
-        await signup(username, email, password);
+        await signUp(email, password, { username });
         toast({ title: "Account created successfully!" });
       }
       onSuccess();

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, MessageSquare, Users, Bell, Settings, Shield, LogOut, ChevronLeft, ChevronRight, Hash } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 const Sidebar: React.FC<{ isSidebarCollapsed: boolean }> = ({ isSidebarCollapsed }) => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useSupabaseAuth();
   const location = useLocation();
 
   const navItems = [
@@ -31,7 +31,8 @@ const Sidebar: React.FC<{ isSidebarCollapsed: boolean }> = ({ isSidebarCollapsed
               </Link>
             </li>
           ))}
-          {user?.isAdmin && adminNavItems.map((item) => (
+          {/* Admin links temporarily disabled */}
+          {false && adminNavItems.map((item) => (
             <li key={item.href}>
               <Link to={item.href} className={`flex items-center p-4 hover:bg-gray-200 dark:hover:bg-gray-700 ${location.pathname === item.href ? 'bg-gray-300 dark:bg-gray-700' : ''}`}>
                 <item.icon className="h-6 w-6" />
