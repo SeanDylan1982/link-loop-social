@@ -50,22 +50,17 @@ const AppContent: React.FC = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<PrivateRoute />}>
                 <Route path="/" element={<SupabaseIndex />} />
-                {/* Temporarily disable complex routes until they're updated for Supabase */}
-                {false && (
-                  <>
-                    <Route path="/notifications" element={<NotificationsPage />} />
-                    <Route path="/profile/:userId" element={<ProfilePage />} />
-                    <Route path="/messages/:conversationId" element={<ConversationPage />} />
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route path="/topics" element={<TopicsPage />} />
-                    <Route path="/topics/new" element={<CreateTopicPage />} />
-                    <Route path="/topics/:topicId" element={<SingleTopicPage />} />
-                    <Route path="/topics/:topicId/new-post" element={<CreateTopicPostPage />} />
-                    <Route path="/admin/settings" element={<AdminSettingsPage />} />
-                    <Route path="/friends" element={<FriendsPage />} />
-                    <Route path="/messages" element={<MessagesPage />} />
-                  </>
-                )}
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/profile/:userId" element={<ProfilePage />} />
+                <Route path="/messages/:conversationId" element={<ConversationPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/topics" element={<TopicsPage />} />
+                <Route path="/topics/new" element={<CreateTopicPage />} />
+                <Route path="/topics/:topicId" element={<SingleTopicPage />} />
+                <Route path="/topics/:topicId/new-post" element={<CreateTopicPostPage />} />
+                <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                <Route path="/friends" element={<FriendsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
               </Route>
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />

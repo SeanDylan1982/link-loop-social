@@ -1,9 +1,12 @@
 import React from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 const SupabaseIndex: React.FC = () => {
   const { user, loading } = useSupabaseAuth();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -30,22 +33,46 @@ const SupabaseIndex: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle>Welcome to your Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="mb-4">Hello {user.email}!</p>
-          <p>You are now logged in with Supabase authentication.</p>
+          <p className="mb-6">You are now logged in with Supabase authentication.</p>
           
-          {/* Temporarily disable complex features */}
-          <div className="mt-8 p-4 bg-muted rounded-lg">
-            <h3 className="font-semibold mb-2">Coming Soon</h3>
-            <p className="text-sm text-muted-foreground">
-              Advanced features like messaging, profiles, and social interactions are being updated 
-              to work with the new Supabase backend.
-            </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Button onClick={() => navigate('/topics')} variant="outline">
+              Topics
+            </Button>
+            <Button onClick={() => navigate('/messages')} variant="outline">
+              Messages
+            </Button>
+            <Button onClick={() => navigate('/friends')} variant="outline">
+              Friends
+            </Button>
+            <Button onClick={() => navigate('/notifications')} variant="outline">
+              Notifications
+            </Button>
+            <Button onClick={() => navigate('/admin')} variant="outline">
+              Admin
+            </Button>
+            <Button onClick={() => navigate('/privacy')} variant="outline">
+              Privacy
+            </Button>
           </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Coming Soon</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Advanced features like messaging, profiles, and social interactions are being updated 
+            to work with the new Supabase backend.
+          </p>
         </CardContent>
       </Card>
     </div>
