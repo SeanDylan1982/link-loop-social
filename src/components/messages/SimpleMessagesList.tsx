@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useBroadcastMessaging } from '@/hooks/useBroadcastMessaging';
-import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { Send, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,7 +39,7 @@ interface ConversationMeta {
 
 export const SimpleMessagesList: React.FC<SimpleMessagesListProps> = ({ conversationId }) => {
   const { messages, loading, sendMessage } = useBroadcastMessaging({ conversationId });
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const navigate = useNavigate();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -70,8 +70,10 @@ export const SimpleMessagesList: React.FC<SimpleMessagesListProps> = ({ conversa
         setMetaLoading(false);
       }
     };
-    if (conversationId && user?.id) fetchMeta();
-  }, [conversationId, user?.id, user?.token]);
+    if (user?.id) {
+      fetchMeta();
+    }
+  }, [conversationId, user?.id]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
