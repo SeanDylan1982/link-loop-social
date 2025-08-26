@@ -74,7 +74,8 @@ const AppContent: React.FC = () => {
           </main>
         </div>
       </div>
-      <CookieConsentModal />
+      {/* Temporarily disable cookie consent until fully updated for Supabase */}
+      {false && <CookieConsentModal />}
       <Footer />
     </BrowserRouter>
   );
