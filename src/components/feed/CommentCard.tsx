@@ -15,8 +15,8 @@ const fetchUser = async (userId: string) => {
 
 export const CommentCard: React.FC<CommentCardProps> = ({ comment }) => {
   const { data: author, isLoading } = useQuery<User>({
-    queryKey: ['user', comment.userId],
-    queryFn: () => fetchUser(comment.userId),
+    queryKey: ['user', comment.user_id],
+    queryFn: () => fetchUser(comment.user_id),
   });
 
   if (isLoading) return <div>Loading...</div>;
@@ -31,7 +31,7 @@ export const CommentCard: React.FC<CommentCardProps> = ({ comment }) => {
         <p className="text-sm font-medium">{author?.username}</p>
         <p className="text-sm">{comment.content}</p>
         <p className="text-xs text-gray-500 mt-1">
-          {new Date(comment.createdAt).toLocaleDateString()}
+          {new Date(comment.created_at).toLocaleDateString()}
         </p>
       </div>
     </div>

@@ -1,61 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { useAdmin } from '@/hooks/useAdmin';
-import { useSiteSettings } from '@/hooks/useSiteSettings';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Navbar } from '@/components/layout/Navbar';
+import { useNavigate } from 'react-router-dom';
 
 const AdminSettingsPage: React.FC = () => {
-  const { isAdmin } = useAdmin();
-  const { settings, updateSettings } = useSiteSettings();
-  const [siteName, setSiteName] = useState('');
-  const [siteDescription, setSiteDescription] = useState('');
-
-  useEffect(() => {
-    if (settings) {
-      setSiteName(settings.siteName);
-      setSiteDescription(settings.siteDescription);
-    }
-  }, [settings]);
-
-  const handleSave = async () => {
-    await updateSettings({ siteName, siteDescription });
-  };
-
-  if (!isAdmin) {
-    return <div>Access Denied</div>;
-  }
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
-      <div className="container mx-auto px-4 py-6">
-        <Card className="max-w-lg mx-auto">
-          <CardHeader>
-            <CardTitle>Admin Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label htmlFor="siteName" className="block text-sm font-medium text-gray-700">Site Name</label>
-              <Input
-                id="siteName"
-                value={siteName}
-                onChange={(e) => setSiteName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="siteDescription" className="block text-sm font-medium text-gray-700">Site Description</label>
-              <Input
-                id="siteDescription"
-                value={siteDescription}
-                onChange={(e) => setSiteDescription(e.target.value)}
-              />
-            </div>
-            <Button onClick={handleSave}>Save Settings</Button>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4">Manage application settings and configurations.</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            This page is being updated to work with Supabase. Check back soon!
+          </p>
+          <Button onClick={() => navigate('/admin')}>Back to Admin</Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };

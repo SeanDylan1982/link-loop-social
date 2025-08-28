@@ -10,20 +10,13 @@ import { SupabaseAuthProvider, useSupabaseAuth } from "./hooks/useSupabaseAuth";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import PrivateRoute from "./components/auth/PrivateRoute";
-import ConversationPage from "./pages/ConversationPage";
 import NotificationsPage from './pages/NotificationsPage';
 import AdminPage from './pages/AdminPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TopicsPage from './pages/TopicsPage';
-import CreateTopicPage from './pages/CreateTopicPage';
-import SingleTopicPage from './pages/SingleTopicPage';
-import CreateTopicPostPage from './pages/CreateTopicPostPage';
-import AdminSettingsPage from './pages/AdminSettingsPage';
 import FriendsPage from './pages/FriendsPage';
 import MessagesPage from './pages/MessagesPage';
-import CookieConsentModal from './components/layout/CookieConsentModal';
-import Footer from './components/layout/Footer';
 import { Button } from "@/components/ui/button";
 
 const queryClient = new QueryClient();
@@ -52,13 +45,8 @@ const AppContent: React.FC = () => {
                 <Route path="/" element={<SupabaseIndex />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/profile/:userId" element={<ProfilePage />} />
-                <Route path="/messages/:conversationId" element={<ConversationPage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/topics" element={<TopicsPage />} />
-                <Route path="/topics/new" element={<CreateTopicPage />} />
-                <Route path="/topics/:topicId" element={<SingleTopicPage />} />
-                <Route path="/topics/:topicId/new-post" element={<CreateTopicPostPage />} />
-                <Route path="/admin/settings" element={<AdminSettingsPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
                 <Route path="/messages" element={<MessagesPage />} />
               </Route>
@@ -69,9 +57,6 @@ const AppContent: React.FC = () => {
           </main>
         </div>
       </div>
-      {/* Temporarily disable cookie consent until fully updated for Supabase */}
-      {false && <CookieConsentModal />}
-      <Footer />
     </BrowserRouter>
   );
 };

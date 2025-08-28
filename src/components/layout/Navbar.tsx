@@ -3,7 +3,7 @@ import DarkModeToggle from "./DarkModeToggle";
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import Search from "./Search";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import NotificationsDropdown from "./NotificationsDropdown";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   DropdownMenu,

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -6,8 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Heart, MessageSquare, Share, Send } from 'lucide-react';
 import { Post, Comment, User } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { toast } from '@/hooks/use-toast';
+import { CommentCard } from './CommentCard';
 
 interface PostCardProps {
   post: Post;
@@ -19,7 +19,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const [comments, setComments] = useState<Comment[]>([]);
+  const { user } = useSupabaseAuth();
 
   const handleLike = () => {
     if (!user) return;
@@ -31,14 +32,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
       updatedPost.likes.splice(userIndex, 1);
     } else {
       updatedPost.likes.push(user.id);
-    }
-
-    // Update in localStorage
-    const posts = JSON.parse(localStorage.getItem('socialPosts') || '[]');
-    const postIndex = posts.findIndex((p: Post) => p.id === post.id);
-    if (postIndex > -1) {
-      posts[postIndex] = updatedPost;
-      localStorage.setItem('socialPosts', JSON.stringify(posts));
     }
 
     onPostUpdate(updatedPost);
@@ -53,26 +46,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
     try {
       const comment: Comment = {
         id: Date.now().toString(),
-        userId: user.id,
-        postId: post.id,
+        user_id: user.id,
+        post_id: post.id,
         content: newComment.trim(),
         likes: [],
-        replies: [],
-        createdAt: new Date()
+        post_type: 'post',
+        created_at: new Date().toISOString()
       };
 
-      const updatedPost = { ...post };
-      updatedPost.comments.push(comment);
-
-      // Update in localStorage
-      const posts = JSON.parse(localStorage.getItem('socialPosts') || '[]');
-      const postIndex = posts.findIndex((p: Post) => p.id === post.id);
-      if (postIndex > -1) {
-        posts[postIndex] = updatedPost;
-        localStorage.setItem('socialPosts', JSON.stringify(posts));
-      }
-
-      onPostUpdate(updatedPost);
+      setComments([...comments, comment]);
       setNewComment('');
       toast({ title: "Comment added!" });
     } catch (error) {
@@ -88,16 +70,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
 
   const handleShare = () => {
     const updatedPost = { ...post };
-    updatedPost.shares += 1;
-
-    // Update in localStorage
-    const posts = JSON.parse(localStorage.getItem('socialPosts') || '[]');
-    const postIndex = posts.findIndex((p: Post) => p.id === post.id);
-    if (postIndex > -1) {
-      posts[postIndex] = updatedPost;
-      localStorage.setItem('socialPosts', JSON.stringify(posts));
-    }
-
+    updatedPost.shares = (updatedPost.shares || 0) + 1;
     onPostUpdate(updatedPost);
     toast({ title: "Post shared!" });
   };
@@ -109,13 +82,13 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
       <CardHeader>
         <div className="flex items-center space-x-3">
           <Avatar>
-            <AvatarImage src={author.avatar} />
-            <AvatarFallback>{author.username.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={author.user_metadata?.avatar} />
+            <AvatarFallback>{author.user_metadata?.username?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{author.username}</p>
-            <p className="text-sm text-gray-500">
-              {new Date(post.createdAt).toLocaleDateString()}
+            <p className="font-medium">{author.user_metadata?.username || 'User'}</p>
+            <p className="text-sm text-muted-foreground">
+              {new Date(post.created_at).toLocaleDateString()}
             </p>
           </div>
         </div>
@@ -149,7 +122,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
             className="flex items-center space-x-2"
           >
             <MessageSquare size={16} />
-            <span>{post.comments.length}</span>
+            <span>{comments.length}</span>
           </Button>
           
           <Button
@@ -159,7 +132,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
             className="flex items-center space-x-2"
           >
             <Share size={16} />
-            <span>{post.shares}</span>
+            <span>{post.shares || 0}</span>
           </Button>
         </div>
 
@@ -167,8 +140,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
           <div className="mt-4 space-y-3">
             <form onSubmit={handleComment} className="flex space-x-2">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.avatar} />
-                <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={user?.user_metadata?.avatar} />
+                <AvatarFallback>{user?.user_metadata?.username?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 flex space-x-2">
                 <Textarea
@@ -184,7 +157,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, author, onPostUpdate }
             </form>
 
             <div className="space-y-2">
-              {post.comments.map((comment) => (
+              {comments.map((comment) => (
                 <CommentCard key={comment.id} comment={comment} />
               ))}
             </div>

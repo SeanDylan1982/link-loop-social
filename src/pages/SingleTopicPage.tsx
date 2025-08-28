@@ -1,35 +1,25 @@
-  import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useTopicPosts } from '@/hooks/useTopicPosts';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Navbar } from '@/components/layout/Navbar';
-import { TopicPostCard } from '@/components/topics/TopicPostCard';
+import { useNavigate } from 'react-router-dom';
 
 const SingleTopicPage: React.FC = () => {
-  const { topicId } = useParams<{ topicId: string }>();
-  const { posts, loading, createTopicPost, updateTopicPost } = useTopicPosts(topicId);
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Topic</h1>
-          <Button asChild>
-            <Link to={`/topics/${topicId}/new-post`}>Create Post</Link>
-          </Button>
-        </div>
-        {loading ? (
-          <div className="text-center py-8 text-gray-500">Loading posts...</div>
-        ) : (
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <TopicPostCard key={post.id} post={post} onPostUpdate={updateTopicPost} />
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Topic Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4">View topic discussions and posts.</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            This page is being updated to work with Supabase. Check back soon!
+          </p>
+          <Button onClick={() => navigate('/topics')}>Back to Topics</Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
